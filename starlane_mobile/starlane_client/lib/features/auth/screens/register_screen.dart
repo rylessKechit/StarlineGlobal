@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+
+// Core imports
 import '../../../core/theme/starlane_colors.dart';
-import '../../../data/models/user.dart';
+import '../../../core/router/route_paths.dart';
+import '../../../shared/widgets/starlane_widgets.dart';
+
+// Feature imports
 import '../bloc/auth_bloc.dart';
+import '../../../data/models/user.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,8 +30,10 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _locationController = TextEditingController();
   
   late AnimationController _animationController;
+  late AnimationController _logoController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _logoAnimation;
   
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -40,6 +48,11 @@ class _RegisterScreenState extends State<RegisterScreen>
   void _setupAnimations() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _logoController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
@@ -59,12 +72,22 @@ class _RegisterScreenState extends State<RegisterScreen>
       curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic),
     ));
 
+    _logoAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoController,
+      curve: Curves.elasticOut,
+    ));
+
     _animationController.forward();
+    _logoController.forward();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _logoController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -76,29 +99,41 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   void _handleRegister() {
     if (!_acceptTerms) {
-      _showErrorSnackBar('Vous devez accepter les termes et conditions');
+      _showSnackBar('Vous devez accepter les termes et conditions', isError: true);
       return;
     }
 
     if (_formKey.currentState?.validate() ?? false) {
+      // Hide keyboard
+      FocusScope.of(context).unfocus();
+      
       context.read<AuthBloc>().add(
         AuthRegisterRequested(
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
-          role: UserRole.client, // Toujours client pour cette app
-          location: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null,
+          phone: _phoneController.text.trim().isNotEmpty 
+            ? _phoneController.text.trim() 
+            : null,
+          role: UserRole.client,
+          location: _locationController.text.trim().isNotEmpty 
+            ? _locationController.text.trim() 
+            : null,
         ),
       );
     }
   }
 
-  void _showErrorSnackBar(String message) {
+  void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: StarlaneColors.error,
+        backgroundColor: isError ? StarlaneColors.error : StarlaneColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.r),
+        ),
+        margin: EdgeInsets.all(16.w),
       ),
     );
   }
@@ -108,416 +143,416 @@ class _RegisterScreenState extends State<RegisterScreen>
     return Scaffold(
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            context.go('/home');
-          } else if (state is AuthFailure) {
-            _showErrorSnackBar(state.error);
+          if (state is AuthError) {
+            _showSnackBar(state.message, isError: true);
+          } else if (state is AuthAuthenticated) {
+            _showSnackBar('Bienvenue ${state.user.name} ! Votre compte a été créé avec succès.');
+            context.go(RoutePaths.home);
           }
         },
-        child: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            return Stack(
-              children: [
-                _buildBody(),
-                if (state is AuthLoading)
-                  Container(
-                    color: Colors.black26,
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                StarlaneColors.emerald900,
+                StarlaneColors.emerald700,
+                StarlaneColors.gold800,
               ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: StarlaneColors.premiumGradient,
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: _buildRegisterCard(),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRegisterCard() {
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(maxWidth: 400.w),
-      margin: EdgeInsets.symmetric(horizontal: 0.w),
-      padding: EdgeInsets.all(28.w),
-      decoration: BoxDecoration(
-        color: StarlaneColors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: StarlaneColors.luxuryShadow,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(),
-            SizedBox(height: 24.h),
-            _buildNameField(),
-            SizedBox(height: 16.h),
-            _buildEmailField(),
-            SizedBox(height: 16.h),
-            _buildPasswordField(),
-            SizedBox(height: 16.h),
-            _buildConfirmPasswordField(),
-            SizedBox(height: 16.h),
-            _buildPhoneField(),
-            SizedBox(height: 16.h),
-            _buildLocationField(),
-            SizedBox(height: 20.h),
-            _buildTermsCheckbox(),
-            SizedBox(height: 24.h),
-            _buildRegisterButton(),
-            SizedBox(height: 16.h),
-            _buildLoginLink(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Container(
-          width: 70.w,
-          height: 70.w,
-          decoration: const BoxDecoration(
-            gradient: StarlaneColors.luxuryGradient,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.diamond_rounded,
-            size: 35.sp,
-            color: StarlaneColors.white,
-          ),
-        ),
-        SizedBox(height: 20.h),
-        Text(
-          'Créer un compte',
-          style: TextStyle(
-            fontSize: 26.sp,
-            fontWeight: FontWeight.bold,
-            color: StarlaneColors.navy900,
-          ),
-        ),
-        SizedBox(height: 6.h),
-        Text(
-          'Rejoignez l\'univers du luxe',
-          style: TextStyle(
-            fontSize: 15.sp,
-            color: StarlaneColors.gray600,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNameField() {
-    return TextFormField(
-      controller: _nameController,
-      decoration: InputDecoration(
-        labelText: 'Nom complet',
-        hintText: 'Jean Dupont',
-        prefixIcon: const Icon(Icons.person_outlined),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        filled: true,
-        fillColor: StarlaneColors.gray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
-        ),
-      ),
-      textInputAction: TextInputAction.next,
-      validator: (value) {
-        if (value?.isEmpty ?? true) return 'Nom requis';
-        if (value!.length < 2) return 'Nom trop court';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildEmailField() {
-    return TextFormField(
-      controller: _emailController,
-      decoration: InputDecoration(
-        labelText: 'Email',
-        hintText: 'votre@email.com',
-        prefixIcon: const Icon(Icons.email_outlined),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        filled: true,
-        fillColor: StarlaneColors.gray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
-        ),
-      ),
-      keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.next,
-      validator: (value) {
-        if (value?.isEmpty ?? true) return 'Email requis';
-        if (!value!.contains('@')) return 'Email invalide';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextFormField(
-      controller: _passwordController,
-      decoration: InputDecoration(
-        labelText: 'Mot de passe',
-        hintText: '••••••••',
-        prefixIcon: const Icon(Icons.lock_outlined),
-        suffixIcon: IconButton(
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-          icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-        ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        filled: true,
-        fillColor: StarlaneColors.gray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
-        ),
-      ),
-      obscureText: _obscurePassword,
-      textInputAction: TextInputAction.next,
-      validator: (value) {
-        if (value?.isEmpty ?? true) return 'Mot de passe requis';
-        if (value!.length < 6) return 'Au moins 6 caractères';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildConfirmPasswordField() {
-    return TextFormField(
-      controller: _confirmPasswordController,
-      decoration: InputDecoration(
-        labelText: 'Confirmer le mot de passe',
-        hintText: '••••••••',
-        prefixIcon: const Icon(Icons.lock_outlined),
-        suffixIcon: IconButton(
-          onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-          icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-        ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        filled: true,
-        fillColor: StarlaneColors.gray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
-        ),
-      ),
-      obscureText: _obscureConfirmPassword,
-      textInputAction: TextInputAction.next,
-      validator: (value) {
-        if (value?.isEmpty ?? true) return 'Confirmation requise';
-        if (value != _passwordController.text) return 'Mots de passe différents';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPhoneField() {
-    return TextFormField(
-      controller: _phoneController,
-      decoration: InputDecoration(
-        labelText: 'Téléphone (optionnel)',
-        hintText: '+33 6 12 34 56 78',
-        prefixIcon: const Icon(Icons.phone_outlined),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        filled: true,
-        fillColor: StarlaneColors.gray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
-        ),
-      ),
-      keyboardType: TextInputType.phone,
-      textInputAction: TextInputAction.next,
-    );
-  }
-
-  Widget _buildLocationField() {
-    return TextFormField(
-      controller: _locationController,
-      decoration: InputDecoration(
-        labelText: 'Ville (optionnel)',
-        hintText: 'Paris, France',
-        prefixIcon: const Icon(Icons.location_on_outlined),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        filled: true,
-        fillColor: StarlaneColors.gray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gray300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
-        ),
-      ),
-      textInputAction: TextInputAction.done,
-      onFieldSubmitted: (_) => _handleRegister(),
-    );
-  }
-
-  Widget _buildTermsCheckbox() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Checkbox(
-          value: _acceptTerms,
-          onChanged: (value) => setState(() => _acceptTerms = value ?? false),
-          activeColor: StarlaneColors.gold500,
-        ),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(top: 2.h),
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  color: StarlaneColors.gray600,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Bouton retour + Logo
+                      SizedBox(
+                        height: 200.h,
+                        child: Column(
+                          children: [
+                            SizedBox(height: 20.h),
+                            
+                            // Bouton retour
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => context.go(RoutePaths.login),
+                                  icon: Icon(
+                                    Icons.arrow_back_ios_rounded,
+                                    color: StarlaneColors.white,
+                                    size: 24.sp,
+                                  ),
+                                ),
+                                const Spacer(),
+                              ],
+                            ),
+                            
+                            // Logo animé
+                            Expanded(
+                              child: ScaleTransition(
+                                scale: _logoAnimation,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 80.w,
+                                      height: 80.w,
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            StarlaneColors.gold400,
+                                            StarlaneColors.gold600,
+                                          ],
+                                        ),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: StarlaneColors.gold500.withOpacity(0.3),
+                                            blurRadius: 20,
+                                            spreadRadius: 5,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        Icons.person_add_rounded,
+                                        size: 40.sp,
+                                        color: StarlaneColors.white,
+                                      ),
+                                    ),
+                                    SizedBox(height: 16.h),
+                                    Text(
+                                      'Rejoignez',
+                                      style: TextStyle(
+                                        fontSize: 24.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: StarlaneColors.white,
+                                      ),
+                                    ),
+                                    Text(
+                                      'STARLANE GLOBAL',
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w300,
+                                        color: StarlaneColors.gold300,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Formulaire d'inscription
+                      Expanded(
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Container(
+                              padding: EdgeInsets.all(24.w),
+                              decoration: BoxDecoration(
+                                color: StarlaneColors.white,
+                                borderRadius: BorderRadius.circular(20.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: StarlaneColors.black.withOpacity(0.1),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      'Créer un compte',
+                                      style: TextStyle(
+                                        fontSize: 20.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: StarlaneColors.navy700,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    
+                                    SizedBox(height: 20.h),
+                                    
+                                    // Champ Nom
+                                    StarlaneTextField(
+                                      controller: _nameController,
+                                      label: 'Nom complet',
+                                      hintText: 'Jean Dupont',
+                                      prefixIcon: Icons.person_outline,
+                                      textInputAction: TextInputAction.next,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Nom requis';
+                                        }
+                                        if (value.trim().length < 2) {
+                                          return 'Minimum 2 caractères';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    
+                                    SizedBox(height: 12.h),
+                                    
+                                    // Champ Email
+                                    StarlaneTextField(
+                                      controller: _emailController,
+                                      label: 'Email',
+                                      hintText: 'votre@email.com',
+                                      prefixIcon: Icons.email_outlined,
+                                      keyboardType: TextInputType.emailAddress,
+                                      textInputAction: TextInputAction.next,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Email requis';
+                                        }
+                                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                          return 'Email invalide';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    
+                                    SizedBox(height: 12.h),
+                                    
+                                    // Champ Téléphone (optionnel)
+                                    StarlaneTextField(
+                                      controller: _phoneController,
+                                      label: 'Téléphone (optionnel)',
+                                      hintText: '+33 1 23 45 67 89',
+                                      prefixIcon: Icons.phone_outlined,
+                                      keyboardType: TextInputType.phone,
+                                      textInputAction: TextInputAction.next,
+                                      validator: (value) {
+                                        if (value != null && value.isNotEmpty) {
+                                          if (value.trim().length < 8) {
+                                            return 'Numéro trop court';
+                                          }
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    
+                                    SizedBox(height: 12.h),
+                                    
+                                    // Champ Mot de passe
+                                    StarlaneTextField(
+                                      controller: _passwordController,
+                                      label: 'Mot de passe',
+                                      hintText: 'Minimum 6 caractères',
+                                      prefixIcon: Icons.lock_outline,
+                                      obscureText: _obscurePassword,
+                                      textInputAction: TextInputAction.next,
+                                      suffixIcon: IconButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _obscurePassword = !_obscurePassword;
+                                          });
+                                        },
+                                        icon: Icon(
+                                          _obscurePassword 
+                                            ? Icons.visibility_off_outlined 
+                                            : Icons.visibility_outlined,
+                                          color: StarlaneColors.gray500,
+                                        ),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Mot de passe requis';
+                                        }
+                                        if (value.length < 6) {
+                                          return 'Minimum 6 caractères';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    
+                                    SizedBox(height: 12.h),
+                                    
+                                    // Champ Confirmation mot de passe
+                                    StarlaneTextField(
+                                      controller: _confirmPasswordController,
+                                      label: 'Confirmer le mot de passe',
+                                      hintText: 'Retapez votre mot de passe',
+                                      prefixIcon: Icons.lock_outline,
+                                      obscureText: _obscureConfirmPassword,
+                                      textInputAction: TextInputAction.done,
+                                      onSubmitted: (_) => _handleRegister(),
+                                      suffixIcon: IconButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                                          });
+                                        },
+                                        icon: Icon(
+                                          _obscureConfirmPassword 
+                                            ? Icons.visibility_off_outlined 
+                                            : Icons.visibility_outlined,
+                                          color: StarlaneColors.gray500,
+                                        ),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Confirmation requise';
+                                        }
+                                        if (value != _passwordController.text) {
+                                          return 'Mots de passe différents';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    
+                                    SizedBox(height: 16.h),
+                                    
+                                    // Accepter les termes
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          width: 20.w,
+                                          height: 20.w,
+                                          child: Checkbox(
+                                            value: _acceptTerms,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _acceptTerms = value ?? false;
+                                              });
+                                            },
+                                            activeColor: StarlaneColors.gold500,
+                                          ),
+                                        ),
+                                        SizedBox(width: 12.w),
+                                        Expanded(
+                                          child: RichText(
+                                            text: TextSpan(
+                                              style: TextStyle(
+                                                fontSize: 12.sp,
+                                                color: StarlaneColors.gray600,
+                                              ),
+                                              children: [
+                                                const TextSpan(text: 'J\'accepte les '),
+                                                TextSpan(
+                                                  text: 'Termes et Conditions',
+                                                  style: TextStyle(
+                                                    color: StarlaneColors.gold600,
+                                                    fontWeight: FontWeight.w500,
+                                                    decoration: TextDecoration.underline,
+                                                  ),
+                                                ),
+                                                const TextSpan(text: ' et la '),
+                                                TextSpan(
+                                                  text: 'Politique de Confidentialité',
+                                                  style: TextStyle(
+                                                    color: StarlaneColors.gold600,
+                                                    fontWeight: FontWeight.w500,
+                                                    decoration: TextDecoration.underline,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    SizedBox(height: 20.h),
+                                    
+                                    // Bouton d'inscription
+                                    BlocBuilder<AuthBloc, AuthState>(
+                                      builder: (context, state) {
+                                        final isLoading = state is AuthLoading;
+                                        
+                                        return StarlaneButton(
+                                          text: 'Créer mon compte',
+                                          onPressed: isLoading ? null : _handleRegister,
+                                          isLoading: isLoading,
+                                          style: StarlaneButtonStyle.primary,
+                                        );
+                                      },
+                                    ),
+                                    
+                                    SizedBox(height: 16.h),
+                                    
+                                    // Divider
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Divider(
+                                            color: StarlaneColors.gray300,
+                                            thickness: 1,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 16.w),
+                                          child: Text(
+                                            'ou',
+                                            style: TextStyle(
+                                              fontSize: 12.sp,
+                                              color: StarlaneColors.gray500,
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Divider(
+                                            color: StarlaneColors.gray300,
+                                            thickness: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    SizedBox(height: 12.h),
+                                    
+                                    // Bouton connexion
+                                    StarlaneButton(
+                                      text: 'J\'ai déjà un compte',
+                                      onPressed: () {
+                                        context.go(RoutePaths.login);
+                                      },
+                                      style: StarlaneButtonStyle.outline,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Footer
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        child: Text(
+                          'Rejoignez des milliers de clients qui font confiance\nà Starlane Global pour leurs services de luxe',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: StarlaneColors.white.withOpacity(0.8),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                children: [
-                  const TextSpan(text: 'J\'accepte les '),
-                  TextSpan(
-                    text: 'termes et conditions',
-                    style: TextStyle(
-                      color: StarlaneColors.gold600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const TextSpan(text: ' et la '),
-                  TextSpan(
-                    text: 'politique de confidentialité',
-                    style: TextStyle(
-                      color: StarlaneColors.gold600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildRegisterButton() {
-    return ElevatedButton(
-      onPressed: _handleRegister,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: StarlaneColors.gold500,
-        foregroundColor: StarlaneColors.white,
-        padding: EdgeInsets.symmetric(vertical: 16.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        elevation: 2,
       ),
-      child: Text(
-        'Créer mon compte',
-        style: TextStyle(
-          fontSize: 16.sp,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoginLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Déjà un compte ? ',
-          style: TextStyle(
-            color: StarlaneColors.gray600,
-            fontSize: 14.sp,
-          ),
-        ),
-        TextButton(
-          onPressed: () => context.go('/login'),
-          child: Text(
-            'Se connecter',
-            style: TextStyle(
-              color: StarlaneColors.gold600,
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

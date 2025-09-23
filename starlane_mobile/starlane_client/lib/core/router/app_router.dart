@@ -11,11 +11,14 @@ import '../../shared/screens/splash_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 
+// Client screens
+import '../../features/client/screens/home_screen.dart';
+import '../../features/client/screens/explore_screen.dart';
+import '../../features/client/screens/bookings_screen.dart';
+import '../../features/client/screens/profile_screen.dart';
+
 // Navigation
 import '../navigation/main_navigation.dart';
-
-// Screen placeholders (will be replaced with real screens)
-import '../../shared/screens/placeholder_screens.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -43,7 +46,7 @@ class AppRouter {
         routes: [
           GoRoute(
             path: RoutePaths.home,
-            builder: (context, state) => const HomeScreen(),
+            builder: (context, state) => const ClientHomeScreen(),
           ),
           GoRoute(
             path: RoutePaths.explore,
