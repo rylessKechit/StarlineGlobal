@@ -1,11 +1,10 @@
-import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 part 'user.g.dart';
 
 @JsonSerializable()
 class User extends Equatable {
-  @JsonKey(name: '_id')
   final String id;
   final String name;
   final String email;
@@ -14,26 +13,16 @@ class User extends Equatable {
   final UserStatus status;
   final String? avatar;
   final String? location;
-  
-  // Client specific fields
-  final double totalSpent;
+  final double? totalSpent;
   final String? favoriteDriver;
-  
-  // Provider specific fields
   final String? companyName;
-  final double totalRevenue;
-  final double rating;
-  final int reviewsCount;
-  
-  // Statistics
-  final int totalBookings;
-  
-  // Verification & Security
+  final double? totalRevenue;
+  final double? rating;
+  final int? reviewsCount;
+  final int? totalBookings;
   final bool emailVerified;
   final DateTime? lastLogin;
-  
-  // Metadata
-  final DateTime memberSince;
+  final DateTime? memberSince;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -46,16 +35,16 @@ class User extends Equatable {
     required this.status,
     this.avatar,
     this.location,
-    this.totalSpent = 0.0,
+    this.totalSpent,
     this.favoriteDriver,
     this.companyName,
-    this.totalRevenue = 0.0,
-    this.rating = 0.0,
-    this.reviewsCount = 0,
-    this.totalBookings = 0,
+    this.totalRevenue,
+    this.rating,
+    this.reviewsCount,
+    this.totalBookings,
     this.emailVerified = false,
     this.lastLogin,
-    required this.memberSince,
+    this.memberSince,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -63,61 +52,18 @@ class User extends Equatable {
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
   Map<String, dynamic> toJson() => _$UserToJson(this);
 
-  // Getters
-  bool get isProvider => role == UserRole.prestataire;
-  bool get isClient => role == UserRole.client;
-  bool get isAdmin => role == UserRole.admin;
-  bool get isActive => status == UserStatus.active;
-  bool get hasAvatar => avatar != null && avatar!.isNotEmpty;
-  String get displayName => name;
-  String get initials => name.split(' ').take(2).map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').join();
-
-  // CopyWith method for immutability
-  User copyWith({
-    String? id,
-    String? name,
-    String? email,
-    String? phone,
-    UserRole? role,
-    UserStatus? status,
-    String? avatar,
-    String? location,
-    double? totalSpent,
-    String? favoriteDriver,
-    String? companyName,
-    double? totalRevenue,
-    double? rating,
-    int? reviewsCount,
-    int? totalBookings,
-    bool? emailVerified,
-    DateTime? lastLogin,
-    DateTime? memberSince,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return User(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      phone: phone ?? this.phone,
-      role: role ?? this.role,
-      status: status ?? this.status,
-      avatar: avatar ?? this.avatar,
-      location: location ?? this.location,
-      totalSpent: totalSpent ?? this.totalSpent,
-      favoriteDriver: favoriteDriver ?? this.favoriteDriver,
-      companyName: companyName ?? this.companyName,
-      totalRevenue: totalRevenue ?? this.totalRevenue,
-      rating: rating ?? this.rating,
-      reviewsCount: reviewsCount ?? this.reviewsCount,
-      totalBookings: totalBookings ?? this.totalBookings,
-      emailVerified: emailVerified ?? this.emailVerified,
-      lastLogin: lastLogin ?? this.lastLogin,
-      memberSince: memberSince ?? this.memberSince,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
+  String get initials {
+    final parts = name.split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase();
   }
+
+  bool get isActive => status == UserStatus.active;
+  bool get isClient => role == UserRole.client;
+  bool get isProvider => role == UserRole.prestataire;
+  bool get isAdmin => role == UserRole.admin;
 
   @override
   List<Object?> get props => [
@@ -145,17 +91,6 @@ enum UserRole {
         return 'Prestataire';
       case UserRole.admin:
         return 'Administrateur';
-    }
-  }
-
-  String get description {
-    switch (this) {
-      case UserRole.client:
-        return 'Accès aux services de luxe';
-      case UserRole.prestataire:
-        return 'Fournisseur de services';
-      case UserRole.admin:
-        return 'Administrateur de la plateforme';
     }
   }
 }
@@ -187,7 +122,6 @@ enum UserStatus {
   bool get canAccess => this == UserStatus.active;
 }
 
-// Auth Request/Response Models
 @JsonSerializable()
 class AuthResponse extends Equatable {
   final User user;
@@ -235,8 +169,8 @@ class RegisterRequest extends Equatable {
   final String password;
   final String? phone;
   final String role;
-  final String? companyName;
   final String? location;
+  final String? companyName;
 
   const RegisterRequest({
     required this.name,
@@ -244,8 +178,8 @@ class RegisterRequest extends Equatable {
     required this.password,
     this.phone,
     required this.role,
-    this.companyName,
     this.location,
+    this.companyName,
   });
 
   factory RegisterRequest.fromJson(Map<String, dynamic> json) =>
@@ -254,7 +188,7 @@ class RegisterRequest extends Equatable {
   Map<String, dynamic> toJson() => _$RegisterRequestToJson(this);
 
   @override
-  List<Object?> get props => [name, email, password, phone, role, companyName, location];
+  List<Object?> get props => [name, email, password, phone, role, location, companyName];
 }
 
 @JsonSerializable()
@@ -262,14 +196,12 @@ class UpdateProfileRequest extends Equatable {
   final String? name;
   final String? phone;
   final String? location;
-  final String? companyName;
   final String? avatar;
 
   const UpdateProfileRequest({
     this.name,
     this.phone,
     this.location,
-    this.companyName,
     this.avatar,
   });
 
@@ -279,27 +211,23 @@ class UpdateProfileRequest extends Equatable {
   Map<String, dynamic> toJson() => _$UpdateProfileRequestToJson(this);
 
   @override
-  List<Object?> get props => [name, phone, location, companyName, avatar];
+  List<Object?> get props => [name, phone, location, avatar];
 }
 
 @JsonSerializable()
 class UpdateUserRequest extends Equatable {
   final String? name;
-  final String? email;
   final String? phone;
-  final String? role;
-  final String? status;
   final String? location;
-  final String? companyName;
+  final String? avatar;
+  final String? status;
 
   const UpdateUserRequest({
     this.name,
-    this.email,
     this.phone,
-    this.role,
-    this.status,
     this.location,
-    this.companyName,
+    this.avatar,
+    this.status,
   });
 
   factory UpdateUserRequest.fromJson(Map<String, dynamic> json) =>
@@ -308,5 +236,5 @@ class UpdateUserRequest extends Equatable {
   Map<String, dynamic> toJson() => _$UpdateUserRequestToJson(this);
 
   @override
-  List<Object?> get props => [name, email, phone, role, status, location, companyName];
+  List<Object?> get props => [name, phone, location, avatar, status];
 }

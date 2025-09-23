@@ -3,11 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-// Core
+// Core imports
 import 'core/theme/starlane_colors.dart';
+import 'data/api/api_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialisation du client API
+  DioClient().initialize();
   
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -50,7 +54,6 @@ class StarlaneClientApp extends StatelessWidget {
   }
 }
 
-// Configuration du routeur avec Shell Route
 final GoRouter _router = GoRouter(
   initialLocation: '/splash',
   routes: [
@@ -62,8 +65,6 @@ final GoRouter _router = GoRouter(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
     ),
-    
-    // Shell Route pour la navigation bottom
     ShellRoute(
       builder: (context, state, child) => MainNavigation(child: child),
       routes: [
@@ -88,7 +89,6 @@ final GoRouter _router = GoRouter(
   ],
 );
 
-// Navigation Bottom principale
 class MainNavigation extends StatefulWidget {
   final Widget child;
   
@@ -235,7 +235,6 @@ class NavigationItem {
   });
 }
 
-// Splash Screen (inchangé)
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -309,7 +308,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// Login Screen (inchangé)
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
@@ -349,49 +347,7 @@ class LoginScreen extends StatelessWidget {
                       color: StarlaneColors.white,
                     ),
                   ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'Connectez-vous à votre espace premium',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      color: StarlaneColors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
                   SizedBox(height: 48.h),
-                  Container(
-                    width: double.infinity,
-                    height: 56.h,
-                    decoration: BoxDecoration(
-                      color: StarlaneColors.white,
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Email',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                  Container(
-                    width: double.infinity,
-                    height: 56.h,
-                    decoration: BoxDecoration(
-                      color: StarlaneColors.white,
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: TextField(
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        hintText: 'Mot de passe',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 32.h),
                   SizedBox(
                     width: double.infinity,
                     height: 56.h,
@@ -423,13 +379,10 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-// Home Screen amélioré
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  final List<Map<String, dynamic>> services = const [
-    {'title': 'Immobilier', 'icon': Icons.home, 'color': StarlaneColors.gold500},
-    {'title': 'Aviation', 'icon': Icons.flight, 'color': StarlaneColors.navy500},
+  List<Map<String, dynamic>> get services => const [
     {'title': 'Transport', 'icon': Icons.car_rental, 'color': StarlaneColors.emerald500},
     {'title': 'Corporate', 'icon': Icons.business, 'color': StarlaneColors.purple500},
     {'title': 'Lifestyle', 'icon': Icons.spa, 'color': StarlaneColors.gold600},
@@ -453,10 +406,9 @@ class HomeScreen extends StatelessWidget {
               title: Text(
                 'STARLANE GLOBAL',
                 style: TextStyle(
-                  fontSize: 16.sp,
+                  fontSize: 20.sp,
                   fontWeight: FontWeight.bold,
-                  color: StarlaneColors.gray900,
-                  letterSpacing: 1,
+                  color: StarlaneColors.navy900,
                 ),
               ),
               centerTitle: true,
@@ -464,135 +416,60 @@ class HomeScreen extends StatelessWidget {
           ),
           SliverPadding(
             padding: EdgeInsets.all(20.w),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // Header Premium
-                Container(
-                  padding: EdgeInsets.all(24.w),
-                  decoration: BoxDecoration(
-                    gradient: StarlaneColors.luxuryGradient,
-                    borderRadius: BorderRadius.circular(20.r),
-                    boxShadow: StarlaneColors.cardShadow,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.diamond_rounded,
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16.w,
+                mainAxisSpacing: 16.h,
+                childAspectRatio: 1,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final service = services[index];
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: StarlaneColors.white,
+                      borderRadius: BorderRadius.circular(20.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: StarlaneColors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 60.w,
+                          height: 60.w,
+                          decoration: BoxDecoration(
+                            color: service['color'],
+                            borderRadius: BorderRadius.circular(16.r),
+                          ),
+                          child: Icon(
+                            service['icon'],
                             color: StarlaneColors.white,
-                            size: 32.sp,
+                            size: 30.sp,
                           ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Text(
-                              'Services Premium',
-                              style: TextStyle(
-                                fontSize: 24.sp,
-                                fontWeight: FontWeight.bold,
-                                color: StarlaneColors.white,
-                              ),
-                            ),
+                        ),
+                        SizedBox(height: 12.h),
+                        Text(
+                          service['title'],
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                            color: StarlaneColors.gray900,
                           ),
-                        ],
-                      ),
-                      SizedBox(height: 12.h),
-                      Text(
-                        'Découvrez des expériences de luxe exceptionnelles, conçues pour célébrer la diversité.',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          color: StarlaneColors.white,
-                          height: 1.4,
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 32.h),
-                
-                // Section Services
-                Text(
-                  'Nos Services',
-                  style: TextStyle(
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.bold,
-                    color: StarlaneColors.gray900,
-                  ),
-                ),
-                SizedBox(height: 16.h),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16.w,
-                    mainAxisSpacing: 16.h,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemCount: services.length,
-                  itemBuilder: (context, index) {
-                    final service = services[index];
-                    return GestureDetector(
-                      onTap: () {
-                        // Animation de feedback
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${service['title']} sélectionné'),
-                            duration: const Duration(seconds: 1),
-                            backgroundColor: service['color'],
-                          ),
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: StarlaneColors.white,
-                          borderRadius: BorderRadius.circular(16.r),
-                          boxShadow: StarlaneColors.cardShadow,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 60.w,
-                              height: 60.w,
-                              decoration: BoxDecoration(
-                                color: service['color'],
-                                borderRadius: BorderRadius.circular(16.r),
-                              ),
-                              child: Icon(
-                                service['icon'],
-                                color: StarlaneColors.white,
-                                size: 30.sp,
-                              ),
-                            ),
-                            SizedBox(height: 12.h),
-                            Text(
-                              service['title'],
-                              style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w600,
-                                color: StarlaneColors.gray900,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              service['subtitle'] ?? '',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                color: StarlaneColors.gray600,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                SizedBox(height: 100.h), // Espace pour bottom nav
-              ]),
+                      ],
+                    ),
+                  );
+                },
+                childCount: services.length,
+              ),
             ),
           ),
         ],
@@ -601,7 +478,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// Écrans des autres onglets
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
 
@@ -630,14 +506,6 @@ class ExploreScreen extends StatelessWidget {
                   color: StarlaneColors.white,
                 ),
               ),
-              SizedBox(height: 8.h),
-              Text(
-                'Découvrez nos services de luxe',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  color: StarlaneColors.white,
-                ),
-              ),
             ],
           ),
         ),
@@ -654,7 +522,7 @@ class BookingsScreen extends StatelessWidget {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: StarlaneColors.nightGradient,
+          gradient: StarlaneColors.premiumGradient,
         ),
         child: Center(
           child: Column(
@@ -667,18 +535,10 @@ class BookingsScreen extends StatelessWidget {
               ),
               SizedBox(height: 16.h),
               Text(
-                'Mes Réservations',
+                'Réservations',
                 style: TextStyle(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: StarlaneColors.white,
-                ),
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                'Gérez vos expériences de luxe',
-                style: TextStyle(
-                  fontSize: 16.sp,
                   color: StarlaneColors.white,
                 ),
               ),
@@ -698,7 +558,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: StarlaneColors.luxuryGradient,
+          gradient: StarlaneColors.diversityGradient,
         ),
         child: Center(
           child: Column(
@@ -711,18 +571,10 @@ class ProfileScreen extends StatelessWidget {
               ),
               SizedBox(height: 16.h),
               Text(
-                'Mon Profil',
+                'Profil',
                 style: TextStyle(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: StarlaneColors.white,
-                ),
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                'Gérez votre compte premium',
-                style: TextStyle(
-                  fontSize: 16.sp,
                   color: StarlaneColors.white,
                 ),
               ),

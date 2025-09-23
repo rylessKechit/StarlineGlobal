@@ -3,14 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:json_annotation/json_annotation.dart';
+import '../models/user.dart';
 
 part 'api_client.g.dart';
 
 /// Configuration pour l'API Starlane Global
 class ApiConfig {
   static const String baseUrl = kDebugMode 
-    ? 'http://localhost:5000/api'  // Développement
-    : 'https://api.starlaneglobal.com/api';  // Production
+    ? 'http://localhost:4000/api'
+    : 'https://api.starlaneglobal.com/api';
   
   static const int connectTimeout = 30000;
   static const int receiveTimeout = 30000;
@@ -40,7 +41,6 @@ class DioClient {
       },
     ));
 
-    // Intercepteurs
     _dio.interceptors.add(_AuthInterceptor(_storage));
     
     if (kDebugMode) {
@@ -50,6 +50,7 @@ class DioClient {
         requestHeader: true,
         responseHeader: false,
         error: true,
+        logPrint: (obj) => print('🌐 API: $obj'),
       ));
     }
   }
@@ -73,9 +74,7 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode == 401) {
-      // Token expiré, rediriger vers login
       await _storage.deleteAll();
-      // Ici vous pouvez ajouter la navigation vers login
     }
     super.onError(err, handler);
   }
@@ -86,7 +85,6 @@ class _AuthInterceptor extends Interceptor {
 abstract class StarlaneApiClient {
   factory StarlaneApiClient(Dio dio, {String baseUrl}) = _StarlaneApiClient;
 
-  // ============ AUTH ENDPOINTS ============
   @POST('/auth/register')
   Future<ApiResponse<AuthResponse>> register(@Body() RegisterRequest request);
 
@@ -100,9 +98,8 @@ abstract class StarlaneApiClient {
   Future<ApiResponse<User>> updateProfile(@Body() UpdateProfileRequest request);
 
   @POST('/auth/logout')
-  Future<ApiResponse<void>> logout();
+  Future<ApiResponse<String>> logout();
 
-  // ============ USER ENDPOINTS ============
   @GET('/users')
   Future<ApiResponse<PaginatedResponse<User>>> getUsers({
     @Query('page') int page = 1,
@@ -121,85 +118,30 @@ abstract class StarlaneApiClient {
     @Body() UpdateUserRequest request,
   );
 
-  // ============ ACTIVITIES ENDPOINTS ============ 
-  @GET('/activities')
-  Future<ApiResponse<List<Activity>>> getActivities({
-    @Query('category') String? category,
-    @Query('location') String? location,
-    @Query('page') int page = 1,
-    @Query('limit') int limit = 20,
-  });
-
-  @GET('/activities/{id}')
-  Future<ApiResponse<Activity>> getActivityById(@Path('id') String activityId);
-
-  @POST('/activities')
-  Future<ApiResponse<Activity>> createActivity(@Body() CreateActivityRequest request);
-
-  @PUT('/activities/{id}')
-  Future<ApiResponse<Activity>> updateActivity(
-    @Path('id') String activityId,
-    @Body() UpdateActivityRequest request,
-  );
-
-  @DELETE('/activities/{id}')
-  Future<ApiResponse<void>> deleteActivity(@Path('id') String activityId);
-
-  @GET('/activities/provider/{providerId}')
-  Future<ApiResponse<List<Activity>>> getProviderActivities(
-    @Path('providerId') String providerId,
-  );
-
-  // ============ BOOKINGS ENDPOINTS ============
-  @GET('/bookings')
-  Future<ApiResponse<List<Booking>>> getBookings({
-    @Query('status') String? status,
-    @Query('page') int page = 1,
-    @Query('limit') int limit = 20,
-  });
-
-  @GET('/bookings/{id}')
-  Future<ApiResponse<Booking>> getBookingById(@Path('id') String bookingId);
-
-  @POST('/bookings')
-  Future<ApiResponse<Booking>> createBooking(@Body() CreateBookingRequest request);
-
-  @PUT('/bookings/{id}')
-  Future<ApiResponse<Booking>> updateBooking(
-    @Path('id') String bookingId,
-    @Body() UpdateBookingRequest request,
-  );
-
-  @PATCH('/bookings/{id}/status')
-  Future<ApiResponse<Booking>> updateBookingStatus(
-    @Path('id') String bookingId,
-    @Body() UpdateStatusRequest request,
-  );
-
-  @GET('/bookings/client/{clientId}')
-  Future<ApiResponse<List<Booking>>> getClientBookings(
-    @Path('clientId') String clientId,
-  );
-
-  @GET('/bookings/provider/{providerId}')
-  Future<ApiResponse<List<Booking>>> getProviderBookings(
-    @Path('providerId') String providerId,
-  );
-
-  // ============ REVIEWS ENDPOINTS ============
-  @GET('/reviews/activity/{activityId}')
-  Future<ApiResponse<List<Review>>> getActivityReviews(
-    @Path('activityId') String activityId,
-  );
-
-  @POST('/reviews')
-  Future<ApiResponse<Review>> createReview(@Body() CreateReviewRequest request);
-
-  @GET('/reviews/user/{userId}')
-  Future<ApiResponse<List<Review>>> getUserReviews(@Path('userId') String userId);
+  @GET('/health')
+  Future<ApiResponse<HealthResponse>> healthCheck();
 }
 
-// ============ RESPONSE WRAPPERS ============
+// Response Models
+@JsonSerializable()
+class HealthResponse {
+  final String message;
+  final String timestamp;
+  final String environment;
+
+  HealthResponse({
+    required this.message,
+    required this.timestamp,
+    required this.environment,
+  });
+
+  factory HealthResponse.fromJson(Map<String, dynamic> json) =>
+      _$HealthResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$HealthResponseToJson(this);
+}
+
+// Response Wrappers
 @JsonSerializable(genericArgumentFactories: true)
 class ApiResponse<T> {
   final bool success;
@@ -219,7 +161,7 @@ class ApiResponse<T> {
     T Function(Object? json) fromJsonT,
   ) => _$ApiResponseFromJson(json, fromJsonT);
 
-  Map<String, dynamic> toJson(Object Function(T value) toJsonT) =>
+  Map<String, dynamic> toJson(Object? Function(T value) toJsonT) =>
       _$ApiResponseToJson(this, toJsonT);
 }
 
@@ -238,7 +180,7 @@ class PaginatedResponse<T> {
     T Function(Object? json) fromJsonT,
   ) => _$PaginatedResponseFromJson(json, fromJsonT);
 
-  Map<String, dynamic> toJson(Object Function(T value) toJsonT) =>
+  Map<String, dynamic> toJson(Object? Function(T value) toJsonT) =>
       _$PaginatedResponseToJson(this, toJsonT);
 }
 
@@ -262,4 +204,30 @@ class Pagination {
       _$PaginationFromJson(json);
 
   Map<String, dynamic> toJson() => _$PaginationToJson(this);
+}
+
+// Exception Classes
+class AuthException implements Exception {
+  final String message;
+  final List<String>? errors;
+
+  AuthException({required this.message, this.errors});
+
+  @override
+  String toString() => 'AuthException: $message';
+}
+
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+  final List<String>? errors;
+
+  ApiException({
+    required this.message,
+    this.statusCode,
+    this.errors,
+  });
+
+  @override
+  String toString() => 'ApiException($statusCode): $message';
 }

@@ -346,11 +346,61 @@ const getUserStats = async (req, res) => {
   }
 };
 
+// Activate pending user (for testing purposes)
+const activateUser = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+    
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    if (user.status === 'active') {
+      return res.status(200).json({
+        success: true,
+        message: 'User is already active',
+        data: { user: user.getPublicProfile() }
+      });
+    }
+    
+    // Activate user
+    user.status = 'active';
+    await user.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'User activated successfully',
+      data: { user: user.getPublicProfile() }
+    });
+    
+  } catch (error) {
+    console.error('Activate user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while activating user'
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   updateUser,
   toggleUserStatus,
   deleteUser,
-  getUserStats
+  getUserStats,
+  activateUser
 };

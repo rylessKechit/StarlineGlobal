@@ -8,6 +8,7 @@ abstract class AuthRepository {
   Future<User> getProfile();
   Future<User> updateProfile(UpdateProfileRequest request);
   Future<void> logout();
+  Future<bool> healthCheck();
 }
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -96,15 +97,27 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
-      await _apiClient.logout();
+      final response = await _apiClient.logout();
+      if (!response.success) {
+        throw AuthException(message: response.message);
+      }
     } on DioException catch (e) {
-      // On peut ignorer certaines erreurs lors de la déconnexion
       if (e.response?.statusCode != 401) {
         throw _handleDioException(e);
       }
+      // Si 401, on considère que c'est OK (token déjà expiré)
     } catch (e) {
-      // Ignorer les erreurs de logout pour ne pas bloquer l'utilisateur
-      print('Erreur lors de la déconnexion: $e');
+      // Ignorer les autres erreurs de logout pour ne pas bloquer l'utilisateur
+    }
+  }
+
+  @override
+  Future<bool> healthCheck() async {
+    try {
+      final response = await _apiClient.healthCheck();
+      return response.success;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -119,7 +132,7 @@ class AuthRepositoryImpl implements AuthRepository {
       
       case DioExceptionType.connectionError:
         return AuthException(
-          message: 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
+          message: 'Impossible de se connecter au serveur. Vérifiez que votre API tourne sur le port 4000.',
         );
       
       case DioExceptionType.badResponse:
@@ -131,74 +144,32 @@ class AuthRepositoryImpl implements AuthRepository {
         
         if (data is Map<String, dynamic>) {
           message = data['message'] ?? message;
-          errors = data['errors']?.cast<String>();
+          if (data['errors'] is List) {
+            errors = (data['errors'] as List).cast<String>();
+          }
         }
         
         switch (statusCode) {
           case 400:
-            return AuthException(
-              message: 'Données invalides. $message',
-              errors: errors,
-            );
+            return AuthException(message: 'Données invalides. $message', errors: errors);
           case 401:
             return AuthException(message: 'Email ou mot de passe incorrect');
           case 403:
-            return AuthException(
-              message: 'Accès refusé. Votre compte peut être suspendu.',
-            );
+            return AuthException(message: 'Accès refusé. Votre compte peut être suspendu.');
+          case 404:
+            return AuthException(message: 'Service non trouvé. Vérifiez l\'URL de votre API.');
           case 409:
             return AuthException(message: 'Un compte avec cet email existe déjà');
           case 422:
-            return AuthException(
-              message: 'Données de validation invalides',
-              errors: errors,
-            );
+            return AuthException(message: 'Données de validation invalides', errors: errors);
           case 500:
-            return AuthException(
-              message: 'Erreur interne du serveur. Veuillez réessayer plus tard.',
-            );
+            return AuthException(message: 'Erreur interne du serveur. Veuillez réessayer plus tard.');
           default:
-            return AuthException(message: message);
+            return AuthException(message: 'Erreur du serveur (Code: $statusCode)');
         }
       
-      case DioExceptionType.cancel:
-        return AuthException(message: 'Requête annulée');
-      
-      case DioExceptionType.unknown:
       default:
-        return AuthException(
-          message: 'Erreur de connexion. Vérifiez votre connexion internet.',
-        );
+        return AuthException(message: 'Erreur de réseau inattendue');
     }
   }
-}
-
-/// Exception personnalisée pour les erreurs d'authentification
-class AuthException implements Exception {
-  final String message;
-  final List<String>? errors;
-  final int? statusCode;
-
-  AuthException({
-    required this.message,
-    this.errors,
-    this.statusCode,
-  });
-
-  @override
-  String toString() {
-    if (errors != null && errors!.isNotEmpty) {
-      return '$message\n${errors!.join('\n')}';
-    }
-    return message;
-  }
-}
-
-/// Extension pour faciliter la gestion des erreurs
-extension AuthExceptionExtension on AuthException {
-  bool get isNetworkError => message.contains('connexion') || message.contains('internet');
-  bool get isValidationError => errors != null && errors!.isNotEmpty;
-  bool get isUnauthorized => statusCode == 401;
-  bool get isForbidden => statusCode == 403;
-  bool get isConflict => statusCode == 409;
 }

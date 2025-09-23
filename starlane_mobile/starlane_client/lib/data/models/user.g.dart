@@ -7,7 +7,7 @@ part of 'user.dart';
 // **************************************************************************
 
 User _$UserFromJson(Map<String, dynamic> json) => User(
-      id: json['_id'] as String,
+      id: json['id'] as String,
       name: json['name'] as String,
       email: json['email'] as String,
       phone: json['phone'] as String?,
@@ -15,24 +15,26 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
       status: $enumDecode(_$UserStatusEnumMap, json['status']),
       avatar: json['avatar'] as String?,
       location: json['location'] as String?,
-      totalSpent: (json['totalSpent'] as num?)?.toDouble() ?? 0.0,
+      totalSpent: (json['totalSpent'] as num?)?.toDouble(),
       favoriteDriver: json['favoriteDriver'] as String?,
       companyName: json['companyName'] as String?,
-      totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0.0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      reviewsCount: (json['reviewsCount'] as num?)?.toInt() ?? 0,
-      totalBookings: (json['totalBookings'] as num?)?.toInt() ?? 0,
+      totalRevenue: (json['totalRevenue'] as num?)?.toDouble(),
+      rating: (json['rating'] as num?)?.toDouble(),
+      reviewsCount: (json['reviewsCount'] as num?)?.toInt(),
+      totalBookings: (json['totalBookings'] as num?)?.toInt(),
       emailVerified: json['emailVerified'] as bool? ?? false,
       lastLogin: json['lastLogin'] == null
           ? null
           : DateTime.parse(json['lastLogin'] as String),
-      memberSince: DateTime.parse(json['memberSince'] as String),
+      memberSince: json['memberSince'] == null
+          ? null
+          : DateTime.parse(json['memberSince'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
 
 Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
-      '_id': instance.id,
+      'id': instance.id,
       'name': instance.name,
       'email': instance.email,
       'phone': instance.phone,
@@ -49,7 +51,7 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'totalBookings': instance.totalBookings,
       'emailVerified': instance.emailVerified,
       'lastLogin': instance.lastLogin?.toIso8601String(),
-      'memberSince': instance.memberSince.toIso8601String(),
+      'memberSince': instance.memberSince?.toIso8601String(),
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
     };
@@ -98,8 +100,8 @@ RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
       password: json['password'] as String,
       phone: json['phone'] as String?,
       role: json['role'] as String,
-      companyName: json['companyName'] as String?,
       location: json['location'] as String?,
+      companyName: json['companyName'] as String?,
     );
 
 Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
@@ -109,8 +111,8 @@ Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
       'password': instance.password,
       'phone': instance.phone,
       'role': instance.role,
-      'companyName': instance.companyName,
       'location': instance.location,
+      'companyName': instance.companyName,
     };
 
 UpdateProfileRequest _$UpdateProfileRequestFromJson(
@@ -119,7 +121,6 @@ UpdateProfileRequest _$UpdateProfileRequestFromJson(
       name: json['name'] as String?,
       phone: json['phone'] as String?,
       location: json['location'] as String?,
-      companyName: json['companyName'] as String?,
       avatar: json['avatar'] as String?,
     );
 
@@ -129,28 +130,23 @@ Map<String, dynamic> _$UpdateProfileRequestToJson(
       'name': instance.name,
       'phone': instance.phone,
       'location': instance.location,
-      'companyName': instance.companyName,
       'avatar': instance.avatar,
     };
 
 UpdateUserRequest _$UpdateUserRequestFromJson(Map<String, dynamic> json) =>
     UpdateUserRequest(
       name: json['name'] as String?,
-      email: json['email'] as String?,
       phone: json['phone'] as String?,
-      role: json['role'] as String?,
-      status: json['status'] as String?,
       location: json['location'] as String?,
-      companyName: json['companyName'] as String?,
+      avatar: json['avatar'] as String?,
+      status: json['status'] as String?,
     );
 
 Map<String, dynamic> _$UpdateUserRequestToJson(UpdateUserRequest instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'email': instance.email,
       'phone': instance.phone,
-      'role': instance.role,
-      'status': instance.status,
       'location': instance.location,
-      'companyName': instance.companyName,
+      'avatar': instance.avatar,
+      'status': instance.status,
     };

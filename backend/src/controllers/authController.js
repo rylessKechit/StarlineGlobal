@@ -56,7 +56,7 @@ const register = async (req, res) => {
       email: email.toLowerCase().trim(),
       password,
       role: userRole,
-      status: userRole === 'admin' ? 'active' : 'pending' // Admins are active by default
+      status: ['admin', 'client'].includes(userRole) ? 'active' : 'pending' // Admins are active by default
     };
     
     // Add optional fields
