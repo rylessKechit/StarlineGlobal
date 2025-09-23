@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; // AJOUTÉ
 import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../core/theme/starlane_colors.dart';
+import '../../features/auth/bloc/auth_bloc.dart'; // AJOUTÉ
 import '../widgets/starlane_widgets.dart';
 
 // ============ SPLASH SCREEN ============
@@ -63,8 +65,13 @@ class _SplashScreenState extends State<SplashScreen>
   void _navigateToNext() {
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
-        // Ici vous pourriez vérifier si c'est la première ouverture
-        context.go('/onboarding');
+        // Vérification de l'état d'authentification
+        final authState = context.read<AuthBloc>().state;
+        if (authState is AuthAuthenticated) {
+          context.go('/home');
+        } else {
+          context.go('/login');
+        }
       }
     });
   }

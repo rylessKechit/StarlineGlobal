@@ -84,7 +84,7 @@ class StarlaneTheme {
         titleMedium: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w500,
-          height: 1.50,
+          height: 1.5,
           letterSpacing: 0.15,
           color: StarlaneColors.gray900,
         ),
@@ -92,16 +92,16 @@ class StarlaneTheme {
           fontSize: 14,
           fontWeight: FontWeight.w500,
           height: 1.43,
-          letterSpacing: 0.10,
-          color: StarlaneColors.gray700,
+          letterSpacing: 0.1,
+          color: StarlaneColors.gray900,
         ),
 
         // Body
         bodyLarge: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w400,
-          height: 1.50,
-          letterSpacing: 0.50,
+          height: 1.5,
+          letterSpacing: 0.5,
           color: StarlaneColors.gray700,
         ),
         bodyMedium: GoogleFonts.inter(
@@ -109,13 +109,13 @@ class StarlaneTheme {
           fontWeight: FontWeight.w400,
           height: 1.43,
           letterSpacing: 0.25,
-          color: StarlaneColors.gray600,
+          color: StarlaneColors.gray700,
         ),
         bodySmall: GoogleFonts.inter(
           fontSize: 12,
           fontWeight: FontWeight.w400,
           height: 1.33,
-          letterSpacing: 0.40,
+          letterSpacing: 0.4,
           color: StarlaneColors.gray600,
         ),
 
@@ -124,21 +124,21 @@ class StarlaneTheme {
           fontSize: 14,
           fontWeight: FontWeight.w500,
           height: 1.43,
-          letterSpacing: 0.10,
-          color: StarlaneColors.gray700,
+          letterSpacing: 0.1,
+          color: StarlaneColors.gray900,
         ),
         labelMedium: GoogleFonts.inter(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           height: 1.33,
-          letterSpacing: 0.50,
-          color: StarlaneColors.gray600,
+          letterSpacing: 0.5,
+          color: StarlaneColors.gray700,
         ),
         labelSmall: GoogleFonts.inter(
           fontSize: 11,
           fontWeight: FontWeight.w500,
           height: 1.45,
-          letterSpacing: 0.50,
+          letterSpacing: 0.5,
           color: StarlaneColors.gray600,
         ),
       ),
@@ -148,16 +148,18 @@ class StarlaneTheme {
         backgroundColor: StarlaneColors.white,
         foregroundColor: StarlaneColors.gray900,
         elevation: 0,
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        scrolledUnderElevation: 1,
+        shadowColor: StarlaneColors.black.withOpacity(0.1),
+        surfaceTintColor: Colors.transparent,
         titleTextStyle: GoogleFonts.montserrat(
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.w600,
           color: StarlaneColors.gray900,
         ),
-        iconTheme: const IconThemeData(
-          color: StarlaneColors.gray700,
-          size: 24,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
         ),
       ),
 
@@ -166,16 +168,17 @@ class StarlaneTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: StarlaneColors.gold500,
           foregroundColor: StarlaneColors.white,
-          elevation: 4,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          elevation: 2,
+          shadowColor: StarlaneColors.black.withOpacity(0.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: GoogleFonts.inter(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       ),
 
@@ -184,15 +187,15 @@ class StarlaneTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: StarlaneColors.gold600,
           side: const BorderSide(color: StarlaneColors.gold500, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: GoogleFonts.inter(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       ),
 
@@ -200,12 +203,12 @@ class StarlaneTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: StarlaneColors.gold600,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           textStyle: GoogleFonts.inter(
             fontSize: 14,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.25,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
       ),
 
@@ -216,11 +219,11 @@ class StarlaneTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: StarlaneColors.gray200),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: StarlaneColors.gray200),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -234,19 +237,22 @@ class StarlaneTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: StarlaneColors.error, width: 2),
         ),
-        labelStyle: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: StarlaneColors.gray600,
-        ),
         hintStyle: GoogleFonts.inter(
+          color: StarlaneColors.gray500,
           fontSize: 14,
-          color: StarlaneColors.gray400,
+        ),
+        labelStyle: GoogleFonts.inter(
+          color: StarlaneColors.gray600,
+          fontSize: 14,
+        ),
+        floatingLabelStyle: GoogleFonts.inter(
+          color: StarlaneColors.gold600,
+          fontSize: 14,
         ),
       ),
 
-      // Card
-      cardTheme: CardTheme(
+      // Card Theme - FIXED
+      cardTheme: CardThemeData(
         color: StarlaneColors.white,
         elevation: 4,
         shadowColor: StarlaneColors.black.withOpacity(0.1),

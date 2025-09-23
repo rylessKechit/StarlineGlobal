@@ -4,10 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/starlane_colors.dart';
 import '../../../data/models/user.dart';
-import '../../../shared/widgets/starlane_button.dart';
-import '../../../shared/widgets/starlane_text_field.dart';
-import '../../../shared/widgets/loading_overlay.dart';
-import '../../../shared/widgets/role_selector.dart';
 import '../bloc/auth_bloc.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -26,13 +22,11 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
-  final _companyNameController = TextEditingController();
   
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   
-  UserRole _selectedRole = UserRole.client;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
@@ -77,7 +71,6 @@ class _RegisterScreenState extends State<RegisterScreen>
     _confirmPasswordController.dispose();
     _phoneController.dispose();
     _locationController.dispose();
-    _companyNameController.dispose();
     super.dispose();
   }
 
@@ -93,21 +86,21 @@ class _RegisterScreenState extends State<RegisterScreen>
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          phone: _phoneController.text.trim().isEmpty 
-            ? null 
-            : _phoneController.text.trim(),
-          role: _selectedRole,
-          location: _locationController.text.trim().isEmpty 
-            ? null 
-            : _locationController.text.trim(),
-          companyName: _selectedRole == UserRole.prestataire
-            ? _companyNameController.text.trim().isEmpty 
-              ? null 
-              : _companyNameController.text.trim()
-            : null,
+          phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+          role: UserRole.client, // Toujours client pour cette app
+          location: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null,
         ),
       );
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: StarlaneColors.error,
+      ),
+    );
   }
 
   @override
@@ -116,44 +109,24 @@ class _RegisterScreenState extends State<RegisterScreen>
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            switch (state.user.role) {
-              case UserRole.client:
-                context.go('/home');
-                break;
-              case UserRole.prestataire:
-                context.go('/provider');
-                break;
-              case UserRole.admin:
-                context.go('/admin');
-                break;
-            }
+            context.go('/home');
           } else if (state is AuthFailure) {
             _showErrorSnackBar(state.error);
           }
         },
         child: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
-            return LoadingOverlay(
-              isLoading: state is AuthLoading,
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: StarlaneColors.diversityGradient,
-                ),
-                child: SafeArea(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 32.h),
-                      child: FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: _buildRegisterCard(),
-                        ),
-                      ),
+            return Stack(
+              children: [
+                _buildBody(),
+                if (state is AuthLoading)
+                  Container(
+                    color: Colors.black26,
+                    child: const Center(
+                      child: CircularProgressIndicator(),
                     ),
                   ),
-                ),
-              ),
+              ],
             );
           },
         ),
@@ -161,10 +134,32 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
+  Widget _buildBody() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: StarlaneColors.premiumGradient,
+      ),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildRegisterCard(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildRegisterCard() {
     return Container(
+      width: double.infinity,
       constraints: BoxConstraints(maxWidth: 400.w),
-      padding: EdgeInsets.all(32.w),
+      margin: EdgeInsets.symmetric(horizontal: 0.w),
+      padding: EdgeInsets.all(28.w),
       decoration: BoxDecoration(
         color: StarlaneColors.white,
         borderRadius: BorderRadius.circular(24.r),
@@ -174,11 +169,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
             _buildHeader(),
             SizedBox(height: 24.h),
-            _buildRoleSelector(),
-            SizedBox(height: 20.h),
             _buildNameField(),
             SizedBox(height: 16.h),
             _buildEmailField(),
@@ -190,16 +184,12 @@ class _RegisterScreenState extends State<RegisterScreen>
             _buildPhoneField(),
             SizedBox(height: 16.h),
             _buildLocationField(),
-            if (_selectedRole == UserRole.prestataire) ...[
-              SizedBox(height: 16.h),
-              _buildCompanyNameField(),
-            ],
             SizedBox(height: 20.h),
             _buildTermsCheckbox(),
             SizedBox(height: 24.h),
             _buildRegisterButton(),
             SizedBox(height: 16.h),
-            _buildSignInLink(),
+            _buildLoginLink(),
           ],
         ),
       ),
@@ -213,29 +203,29 @@ class _RegisterScreenState extends State<RegisterScreen>
           width: 70.w,
           height: 70.w,
           decoration: const BoxDecoration(
-            gradient: StarlaneColors.diversityGradient,
+            gradient: StarlaneColors.luxuryGradient,
             shape: BoxShape.circle,
           ),
           child: Icon(
-            Icons.person_add_rounded,
+            Icons.diamond_rounded,
             size: 35.sp,
             color: StarlaneColors.white,
           ),
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 20.h),
         Text(
           'Créer un compte',
           style: TextStyle(
-            fontSize: 24.sp,
+            fontSize: 26.sp,
             fontWeight: FontWeight.bold,
             color: StarlaneColors.navy900,
           ),
         ),
         SizedBox(height: 6.h),
         Text(
-          'Rejoignez la communauté Starlane',
+          'Rejoignez l\'univers du luxe',
           style: TextStyle(
-            fontSize: 14.sp,
+            fontSize: 15.sp,
             color: StarlaneColors.gray600,
           ),
           textAlign: TextAlign.center,
@@ -244,141 +234,198 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  Widget _buildRoleSelector() {
-    return RoleSelector(
-      selectedRole: _selectedRole,
-      onRoleChanged: (role) {
-        setState(() => _selectedRole = role);
-      },
-    );
-  }
-
   Widget _buildNameField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _nameController,
-      label: 'Nom complet',
-      prefixIcon: Icons.person_outlined,
+      decoration: InputDecoration(
+        labelText: 'Nom complet',
+        hintText: 'Jean Dupont',
+        prefixIcon: const Icon(Icons.person_outlined),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
+      textInputAction: TextInputAction.next,
       validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Veuillez saisir votre nom';
-        }
-        if (value.trim().length < 2) {
-          return 'Le nom doit contenir au moins 2 caractères';
-        }
+        if (value?.isEmpty ?? true) return 'Nom requis';
+        if (value!.length < 2) return 'Nom trop court';
         return null;
       },
     );
   }
 
   Widget _buildEmailField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _emailController,
-      label: 'Email',
+      decoration: InputDecoration(
+        labelText: 'Email',
+        hintText: 'votre@email.com',
+        prefixIcon: const Icon(Icons.email_outlined),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
       keyboardType: TextInputType.emailAddress,
-      prefixIcon: Icons.email_outlined,
+      textInputAction: TextInputAction.next,
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Veuillez saisir votre email';
-        }
-        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-          return 'Veuillez saisir un email valide';
-        }
+        if (value?.isEmpty ?? true) return 'Email requis';
+        if (!value!.contains('@')) return 'Email invalide';
         return null;
       },
     );
   }
 
   Widget _buildPasswordField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _passwordController,
-      label: 'Mot de passe',
+      decoration: InputDecoration(
+        labelText: 'Mot de passe',
+        hintText: '••••••••',
+        prefixIcon: const Icon(Icons.lock_outlined),
+        suffixIcon: IconButton(
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
       obscureText: _obscurePassword,
-      prefixIcon: Icons.lock_outlined,
-      suffixIcon: _obscurePassword ? Icons.visibility_off : Icons.visibility,
-      onSuffixIconPressed: () {
-        setState(() => _obscurePassword = !_obscurePassword);
-      },
+      textInputAction: TextInputAction.next,
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Veuillez saisir un mot de passe';
-        }
-        if (value.length < 6) {
-          return 'Le mot de passe doit contenir au moins 6 caractères';
-        }
+        if (value?.isEmpty ?? true) return 'Mot de passe requis';
+        if (value!.length < 6) return 'Au moins 6 caractères';
         return null;
       },
     );
   }
 
   Widget _buildConfirmPasswordField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _confirmPasswordController,
-      label: 'Confirmer le mot de passe',
+      decoration: InputDecoration(
+        labelText: 'Confirmer le mot de passe',
+        hintText: '••••••••',
+        prefixIcon: const Icon(Icons.lock_outlined),
+        suffixIcon: IconButton(
+          onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+          icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
       obscureText: _obscureConfirmPassword,
-      prefixIcon: Icons.lock_outlined,
-      suffixIcon: _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-      onSuffixIconPressed: () {
-        setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-      },
+      textInputAction: TextInputAction.next,
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Veuillez confirmer votre mot de passe';
-        }
-        if (value != _passwordController.text) {
-          return 'Les mots de passe ne correspondent pas';
-        }
+        if (value?.isEmpty ?? true) return 'Confirmation requise';
+        if (value != _passwordController.text) return 'Mots de passe différents';
         return null;
       },
     );
   }
 
   Widget _buildPhoneField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _phoneController,
-      label: 'Téléphone (optionnel)',
+      decoration: InputDecoration(
+        labelText: 'Téléphone (optionnel)',
+        hintText: '+33 6 12 34 56 78',
+        prefixIcon: const Icon(Icons.phone_outlined),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
       keyboardType: TextInputType.phone,
-      prefixIcon: Icons.phone_outlined,
-      validator: (value) {
-        if (value != null && value.isNotEmpty) {
-          if (value.length < 10) {
-            return 'Veuillez saisir un numéro valide';
-          }
-        }
-        return null;
-      },
+      textInputAction: TextInputAction.next,
     );
   }
 
   Widget _buildLocationField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _locationController,
-      label: 'Localisation (optionnel)',
-      prefixIcon: Icons.location_on_outlined,
-      validator: (value) {
-        if (value != null && value.isNotEmpty && value.length < 2) {
-          return 'La localisation doit contenir au moins 2 caractères';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildCompanyNameField() {
-    return StarlaneTextField(
-      controller: _companyNameController,
-      label: 'Nom de l\'entreprise',
-      prefixIcon: Icons.business_outlined,
-      validator: (value) {
-        if (_selectedRole == UserRole.prestataire) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Veuillez saisir le nom de votre entreprise';
-          }
-          if (value.trim().length < 2) {
-            return 'Le nom doit contenir au moins 2 caractères';
-          }
-        }
-        return null;
-      },
+      decoration: InputDecoration(
+        labelText: 'Ville (optionnel)',
+        hintText: 'Paris, France',
+        prefixIcon: const Icon(Icons.location_on_outlined),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: (_) => _handleRegister(),
     );
   }
 
@@ -388,79 +435,37 @@ class _RegisterScreenState extends State<RegisterScreen>
       children: [
         Checkbox(
           value: _acceptTerms,
-          onChanged: (value) {
-            setState(() => _acceptTerms = value ?? false);
-          },
-          activeColor: StarlaneColors.emerald500,
+          onChanged: (value) => setState(() => _acceptTerms = value ?? false),
+          activeColor: StarlaneColors.gold500,
         ),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 12.h),
-              RichText(
-                text: TextSpan(
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: StarlaneColors.gray700,
-                  ),
-                  children: [
-                    const TextSpan(text: 'J\'accepte les '),
-                    TextSpan(
-                      text: 'termes et conditions',
-                      style: TextStyle(
-                        color: StarlaneColors.emerald600,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const TextSpan(text: ' et la '),
-                    TextSpan(
-                      text: 'politique de confidentialité',
-                      style: TextStyle(
-                        color: StarlaneColors.emerald600,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+          child: Padding(
+            padding: EdgeInsets.only(top: 2.h),
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  color: StarlaneColors.gray600,
                 ),
+                children: [
+                  const TextSpan(text: 'J\'accepte les '),
+                  TextSpan(
+                    text: 'termes et conditions',
+                    style: TextStyle(
+                      color: StarlaneColors.gold600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const TextSpan(text: ' et la '),
+                  TextSpan(
+                    text: 'politique de confidentialité',
+                    style: TextStyle(
+                      color: StarlaneColors.gold600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRegisterButton() {
-    return StarlaneButton(
-      text: 'Créer mon compte',
-      onPressed: _handleRegister,
-      variant: StarlaneButtonVariant.secondary,
-    );
-  }
-
-  Widget _buildSignInLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Déjà un compte ? ',
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: StarlaneColors.gray600,
-          ),
-        ),
-        TextButton(
-          onPressed: () => context.go('/login'),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: 4.w),
-          ),
-          child: Text(
-            'Se connecter',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: StarlaneColors.emerald600,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -468,17 +473,51 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: StarlaneColors.error,
-        behavior: SnackBarBehavior.floating,
+  Widget _buildRegisterButton() {
+    return ElevatedButton(
+      onPressed: _handleRegister,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: StarlaneColors.gold500,
+        foregroundColor: StarlaneColors.white,
+        padding: EdgeInsets.symmetric(vertical: 16.h),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.r),
         ),
-        margin: EdgeInsets.all(16.w),
+        elevation: 2,
       ),
+      child: Text(
+        'Créer mon compte',
+        style: TextStyle(
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Déjà un compte ? ',
+          style: TextStyle(
+            color: StarlaneColors.gray600,
+            fontSize: 14.sp,
+          ),
+        ),
+        TextButton(
+          onPressed: () => context.go('/login'),
+          child: Text(
+            'Se connecter',
+            style: TextStyle(
+              color: StarlaneColors.gold600,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

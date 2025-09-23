@@ -4,10 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/starlane_colors.dart';
 import '../../../data/models/user.dart';
-import '../../../shared/widgets/starlane_button.dart';
-import '../../../shared/widgets/starlane_text_field.dart';
-import '../../../shared/widgets/loading_overlay.dart';
-import '../../../shared/widgets/role_selector.dart';
 import '../bloc/auth_bloc.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -27,7 +23,6 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   
-  UserRole _selectedRole = UserRole.client;
   bool _obscurePassword = true;
   bool _rememberMe = false;
 
@@ -76,10 +71,19 @@ class _LoginScreenState extends State<LoginScreen>
         AuthLoginRequested(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          role: _selectedRole,
+          role: UserRole.client, // Toujours client pour cette app
         ),
       );
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: StarlaneColors.error,
+      ),
+    );
   }
 
   @override
@@ -88,27 +92,24 @@ class _LoginScreenState extends State<LoginScreen>
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            // Redirection basée sur le rôle
-            switch (state.user.role) {
-              case UserRole.client:
-                context.go('/home');
-                break;
-              case UserRole.prestataire:
-                context.go('/provider');
-                break;
-              case UserRole.admin:
-                context.go('/admin');
-                break;
-            }
+            context.go('/home');
           } else if (state is AuthFailure) {
             _showErrorSnackBar(state.error);
           }
         },
         child: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
-            return LoadingOverlay(
-              isLoading: state is AuthLoading,
-              child: _buildBody(),
+            return Stack(
+              children: [
+                _buildBody(),
+                if (state is AuthLoading)
+                  Container(
+                    color: Colors.black26,
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+              ],
             );
           },
         ),
@@ -118,21 +119,27 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildBody() {
     return Container(
+      height: MediaQuery.of(context).size.height, // Prendre toute la hauteur
       decoration: const BoxDecoration(
         gradient: StarlaneColors.premiumGradient,
       ),
       child: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 24.w),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: _buildLoginCard(),
+        bottom: false, // Pas de SafeArea en bas
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: _buildLoginCard(),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -140,8 +147,12 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildLoginCard() {
     return Container(
-      constraints: BoxConstraints(maxWidth: 400.w),
-      padding: EdgeInsets.all(32.w),
+      width: double.infinity,
+      constraints: BoxConstraints(
+        maxWidth: 400.w,
+        minHeight: MediaQuery.of(context).size.height * 0.7, // Au moins 70% de la hauteur
+      ),
+      padding: EdgeInsets.all(28.w),
       decoration: BoxDecoration(
         color: StarlaneColors.white,
         borderRadius: BorderRadius.circular(24.r),
@@ -151,10 +162,9 @@ class _LoginScreenState extends State<LoginScreen>
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center, // Centrer verticalement
           children: [
             _buildHeader(),
-            SizedBox(height: 32.h),
-            _buildRoleSelector(),
             SizedBox(height: 24.h),
             _buildEmailField(),
             SizedBox(height: 16.h),
@@ -163,10 +173,11 @@ class _LoginScreenState extends State<LoginScreen>
             _buildRememberMeRow(),
             SizedBox(height: 32.h),
             _buildLoginButton(),
-            SizedBox(height: 16.h),
+            SizedBox(height: 20.h),
             _buildDivider(),
-            SizedBox(height: 16.h),
+            SizedBox(height: 20.h),
             _buildSignUpLink(),
+            SizedBox(height: 20.h), // Espace en bas pour éviter les coupures
           ],
         ),
       ),
@@ -200,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         SizedBox(height: 8.h),
         Text(
-          'Accédez à votre compte Starlane',
+          'Accédez à vos services de luxe',
           style: TextStyle(
             fontSize: 16.sp,
             color: StarlaneColors.gray600,
@@ -211,80 +222,110 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildRoleSelector() {
-    return RoleSelector(
-      selectedRole: _selectedRole,
-      onRoleChanged: (role) {
-        setState(() => _selectedRole = role);
-      },
-    );
-  }
-
   Widget _buildEmailField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _emailController,
-      label: 'Email',
+      decoration: InputDecoration(
+        labelText: 'Email',
+        hintText: 'votre@email.com',
+        prefixIcon: const Icon(Icons.email_outlined),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
       keyboardType: TextInputType.emailAddress,
-      prefixIcon: Icons.email_outlined,
+      textInputAction: TextInputAction.next,
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Veuillez saisir votre email';
-        }
-        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-          return 'Veuillez saisir un email valide';
-        }
+        if (value?.isEmpty ?? true) return 'Email requis';
+        if (!value!.contains('@')) return 'Email invalide';
         return null;
       },
     );
   }
 
   Widget _buildPasswordField() {
-    return StarlaneTextField(
+    return TextFormField(
       controller: _passwordController,
-      label: 'Mot de passe',
+      decoration: InputDecoration(
+        labelText: 'Mot de passe',
+        hintText: '••••••••',
+        prefixIcon: const Icon(Icons.lock_outlined),
+        suffixIcon: IconButton(
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        filled: true,
+        fillColor: StarlaneColors.gray50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gray300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: const BorderSide(color: StarlaneColors.gold500, width: 2),
+        ),
+      ),
       obscureText: _obscurePassword,
-      prefixIcon: Icons.lock_outlined,
-      suffixIcon: _obscurePassword ? Icons.visibility_off : Icons.visibility,
-      onSuffixIconPressed: () {
-        setState(() => _obscurePassword = !_obscurePassword);
-      },
+      textInputAction: TextInputAction.done,
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Veuillez saisir votre mot de passe';
-        }
+        if (value?.isEmpty ?? true) return 'Mot de passe requis';
+        if (value!.length < 6) return 'Au moins 6 caractères';
         return null;
       },
+      onFieldSubmitted: (_) => _handleLogin(),
     );
   }
 
   Widget _buildRememberMeRow() {
-    return Row(
+    return Column(
       children: [
-        Checkbox(
-          value: _rememberMe,
-          onChanged: (value) {
-            setState(() => _rememberMe = value ?? false);
-          },
-          activeColor: StarlaneColors.gold500,
+        Row(
+          children: [
+            Checkbox(
+              value: _rememberMe,
+              onChanged: (value) => setState(() => _rememberMe = value ?? false),
+              activeColor: StarlaneColors.gold500,
+            ),
+            Expanded(
+              child: Text(
+                'Se souvenir de moi',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: StarlaneColors.gray600,
+                ),
+              ),
+            ),
+          ],
         ),
-        Text(
-          'Se souvenir de moi',
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: StarlaneColors.gray700,
-          ),
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: () {
-            // TODO: Navigation vers mot de passe oublié
-          },
-          child: Text(
-            'Mot de passe oublié ?',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: StarlaneColors.gold600,
-              fontWeight: FontWeight.w500,
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {
+              // TODO: Implement forgot password
+            },
+            child: Text(
+              'Mot de passe oublié ?',
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: StarlaneColors.gold600,
+              ),
             ),
           ),
         ),
@@ -293,39 +334,42 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLoginButton() {
-    return StarlaneButton(
-      text: 'Se connecter',
+    return ElevatedButton(
       onPressed: _handleLogin,
-      variant: StarlaneButtonVariant.primary,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: StarlaneColors.gold500,
+        foregroundColor: StarlaneColors.white,
+        padding: EdgeInsets.symmetric(vertical: 16.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        elevation: 2,
+      ),
+      child: Text(
+        'Se connecter',
+        style: TextStyle(
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(
-          child: Divider(
-            color: StarlaneColors.gray300,
-            thickness: 1,
-          ),
-        ),
+        const Expanded(child: Divider()),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Text(
-            'OU',
+            'ou',
             style: TextStyle(
-              fontSize: 14.sp,
               color: StarlaneColors.gray500,
-              fontWeight: FontWeight.w500,
+              fontSize: 14.sp,
             ),
           ),
         ),
-        Expanded(
-          child: Divider(
-            color: StarlaneColors.gray300,
-            thickness: 1,
-          ),
-        ),
+        const Expanded(child: Divider()),
       ],
     );
   }
@@ -337,41 +381,22 @@ class _LoginScreenState extends State<LoginScreen>
         Text(
           'Pas encore de compte ? ',
           style: TextStyle(
-            fontSize: 14.sp,
             color: StarlaneColors.gray600,
+            fontSize: 14.sp,
           ),
         ),
         TextButton(
-          onPressed: () {
-            context.go('/register');
-          },
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: 4.w),
-          ),
+          onPressed: () => context.go('/register'),
           child: Text(
-            'Créer un compte',
+            'S\'inscrire',
             style: TextStyle(
-              fontSize: 14.sp,
               color: StarlaneColors.gold600,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
       ],
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: StarlaneColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        margin: EdgeInsets.all(16.w),
-      ),
     );
   }
 }
