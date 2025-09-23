@@ -7,6 +7,7 @@ import '../../../data/models/user.dart';
 import '../../../shared/widgets/starlane_button.dart';
 import '../../../shared/widgets/starlane_text_field.dart';
 import '../../../shared/widgets/loading_overlay.dart';
+import '../../../shared/widgets/role_selector.dart';
 import '../bloc/auth_bloc.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -90,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen>
             // Redirection basée sur le rôle
             switch (state.user.role) {
               case UserRole.client:
-                context.go('/client');
+                context.go('/home');
                 break;
               case UserRole.prestataire:
                 context.go('/provider');
@@ -184,83 +185,38 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           child: Icon(
             Icons.diamond_rounded,
-            color: StarlaneColors.white,
             size: 40.sp,
+            color: StarlaneColors.white,
           ),
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 24.h),
         Text(
-          'STARLANE GLOBAL',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          'Connexion',
+          style: TextStyle(
+            fontSize: 28.sp,
             fontWeight: FontWeight.bold,
-            color: StarlaneColors.navy800,
-            letterSpacing: 2,
+            color: StarlaneColors.navy900,
           ),
         ),
         SizedBox(height: 8.h),
         Text(
-          'Luxury Services Platform',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          'Accédez à votre compte Starlane',
+          style: TextStyle(
+            fontSize: 16.sp,
             color: StarlaneColors.gray600,
-            fontStyle: FontStyle.italic,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 
   Widget _buildRoleSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Je suis',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: StarlaneColors.gray700,
-          ),
-        ),
-        SizedBox(height: 8.h),
-        Row(
-          children: UserRole.values.where((role) => role != UserRole.admin).map((role) {
-            final isSelected = _selectedRole == role;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedRole = role),
-                child: Container(
-                  margin: EdgeInsets.only(right: role != UserRole.prestataire ? 8.w : 0),
-                  padding: EdgeInsets.symmetric(vertical: 12.h),
-                  decoration: BoxDecoration(
-                    color: isSelected ? StarlaneColors.gold100 : StarlaneColors.gray50,
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(
-                      color: isSelected ? StarlaneColors.gold500 : StarlaneColors.gray200,
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        role == UserRole.client ? Icons.person : Icons.business,
-                        color: isSelected ? StarlaneColors.gold600 : StarlaneColors.gray500,
-                        size: 24.sp,
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        role.displayName,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: isSelected ? StarlaneColors.gold700 : StarlaneColors.gray600,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+    return RoleSelector(
+      selectedRole: _selectedRole,
+      onRoleChanged: (role) {
+        setState(() => _selectedRole = role);
+      },
     );
   }
 
@@ -268,16 +224,14 @@ class _LoginScreenState extends State<LoginScreen>
     return StarlaneTextField(
       controller: _emailController,
       label: 'Email',
-      hintText: 'votre@email.com',
-      prefixIcon: Icons.email_outlined,
       keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.next,
+      prefixIcon: Icons.email_outlined,
       validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Email requis';
+        if (value == null || value.isEmpty) {
+          return 'Veuillez saisir votre email';
         }
-        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
-          return 'Email invalide';
+        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+          return 'Veuillez saisir un email valide';
         }
         return null;
       },
@@ -288,24 +242,15 @@ class _LoginScreenState extends State<LoginScreen>
     return StarlaneTextField(
       controller: _passwordController,
       label: 'Mot de passe',
-      hintText: '••••••••',
-      prefixIcon: Icons.lock_outlined,
       obscureText: _obscurePassword,
-      textInputAction: TextInputAction.done,
-      onSubmitted: (_) => _handleLogin(),
-      suffixIcon: IconButton(
-        icon: Icon(
-          _obscurePassword ? Icons.visibility : Icons.visibility_off,
-          color: StarlaneColors.gray500,
-        ),
-        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-      ),
+      prefixIcon: Icons.lock_outlined,
+      suffixIcon: _obscurePassword ? Icons.visibility_off : Icons.visibility,
+      onSuffixIconPressed: () {
+        setState(() => _obscurePassword = !_obscurePassword);
+      },
       validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Mot de passe requis';
-        }
-        if (value!.length < 6) {
-          return 'Au moins 6 caractères';
+        if (value == null || value.isEmpty) {
+          return 'Veuillez saisir votre mot de passe';
         }
         return null;
       },
@@ -317,22 +262,27 @@ class _LoginScreenState extends State<LoginScreen>
       children: [
         Checkbox(
           value: _rememberMe,
-          onChanged: (value) => setState(() => _rememberMe = value ?? false),
+          onChanged: (value) {
+            setState(() => _rememberMe = value ?? false);
+          },
           activeColor: StarlaneColors.gold500,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         Text(
           'Se souvenir de moi',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: StarlaneColors.gray600,
+          style: TextStyle(
+            fontSize: 14.sp,
+            color: StarlaneColors.gray700,
           ),
         ),
         const Spacer(),
         TextButton(
-          onPressed: () => context.push('/forgot-password'),
+          onPressed: () {
+            // TODO: Navigation vers mot de passe oublié
+          },
           child: Text(
             'Mot de passe oublié ?',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: TextStyle(
+              fontSize: 14.sp,
               color: StarlaneColors.gold600,
               fontWeight: FontWeight.w500,
             ),
@@ -344,27 +294,38 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildLoginButton() {
     return StarlaneButton(
-      onPressed: _handleLogin,
       text: 'Se connecter',
-      style: StarlaneButtonStyle.primary,
-      size: StarlaneButtonSize.large,
+      onPressed: _handleLogin,
+      variant: StarlaneButtonVariant.primary,
     );
   }
 
   Widget _buildDivider() {
     return Row(
       children: [
-        const Expanded(child: Divider(color: StarlaneColors.gray200)),
+        Expanded(
+          child: Divider(
+            color: StarlaneColors.gray300,
+            thickness: 1,
+          ),
+        ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Text(
-            'ou',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            'OU',
+            style: TextStyle(
+              fontSize: 14.sp,
               color: StarlaneColors.gray500,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        const Expanded(child: Divider(color: StarlaneColors.gray200)),
+        Expanded(
+          child: Divider(
+            color: StarlaneColors.gray300,
+            thickness: 1,
+          ),
+        ),
       ],
     );
   }
@@ -375,15 +336,22 @@ class _LoginScreenState extends State<LoginScreen>
       children: [
         Text(
           'Pas encore de compte ? ',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          style: TextStyle(
+            fontSize: 14.sp,
             color: StarlaneColors.gray600,
           ),
         ),
         TextButton(
-          onPressed: () => context.push('/register'),
+          onPressed: () {
+            context.go('/register');
+          },
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+          ),
           child: Text(
-            'S\'inscrire',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            'Créer un compte',
+            style: TextStyle(
+              fontSize: 14.sp,
               color: StarlaneColors.gold600,
               fontWeight: FontWeight.w600,
             ),
@@ -393,14 +361,14 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  void _showErrorSnackBar(String error) {
+  void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(error),
+        content: Text(message),
         backgroundColor: StarlaneColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.r),
+          borderRadius: BorderRadius.circular(12.r),
         ),
         margin: EdgeInsets.all(16.w),
       ),
