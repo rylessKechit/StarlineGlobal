@@ -1,3 +1,4 @@
+// Path: starlane_mobile/starlane_client/lib/core/app/starlane_app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,6 +11,7 @@ import '../../data/api/api_client.dart';
 import '../../features/auth/repositories/auth_repository.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/client/repositories/activity_repository.dart';
+import '../../features/client/repositories/service_repository.dart';
 
 class StarlaneApp extends StatelessWidget {
   const StarlaneApp({super.key});
@@ -29,9 +31,13 @@ class StarlaneApp extends StatelessWidget {
             RepositoryProvider<AuthRepository>(
               create: (context) => AuthRepositoryImpl(apiClient: apiClient),
             ),
-            // ✅ AJOUT DU ACTIVITY REPOSITORY
+            // ✅ REPOSITORY POUR LES ACTIVITIES
             RepositoryProvider<ActivityRepository>(
               create: (context) => ActivityRepositoryImpl(apiClient: apiClient),
+            ),
+            // ✅ NOUVEAU REPOSITORY POUR LES SERVICES
+            RepositoryProvider<ServiceRepository>(
+              create: (context) => ServiceRepositoryImpl(apiClient: apiClient),
             ),
           ],
           child: BlocProvider(

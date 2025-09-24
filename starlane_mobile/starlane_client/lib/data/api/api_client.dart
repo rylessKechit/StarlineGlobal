@@ -1,3 +1,4 @@
+// Path: starlane_mobile/starlane_client/lib/data/api/api_client.dart
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -11,39 +12,52 @@ part 'api_client.g.dart';
 /// Configuration pour l'API Starlane Global
 class ApiConfig {
   static const String baseUrl = kDebugMode 
-    ? 'http://localhost:4000/api'
-    : 'https://api.starlaneglobal.com/api';
+    ? 'http://10.0.2.2:5000/api'  // Android Emulator
+    : 'https://api.starlane-global.com/api'; // Production
   
-  static const int connectTimeout = 30000;
-  static const int receiveTimeout = 30000;
-  static const int sendTimeout = 30000;
+  static const Duration connectTimeout = Duration(seconds: 10);
+  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration sendTimeout = Duration(seconds: 30);
 }
 
-/// Client HTTP configuré pour Starlane Global
+/// Client Dio configuré pour l'API
 class DioClient {
-  static final DioClient _instance = DioClient._internal();
-  factory DioClient() => _instance;
-  DioClient._internal();
-
+  static DioClient? _instance;
   late Dio _dio;
-  final _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  Dio get dio => _dio;
-
-  void initialize() {
+  DioClient._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
-      connectTimeout: Duration(milliseconds: ApiConfig.connectTimeout),
-      receiveTimeout: Duration(milliseconds: ApiConfig.receiveTimeout),
-      sendTimeout: Duration(milliseconds: ApiConfig.sendTimeout),
+      connectTimeout: ApiConfig.connectTimeout,
+      receiveTimeout: ApiConfig.receiveTimeout,
+      sendTimeout: ApiConfig.sendTimeout,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
     ));
 
-    _dio.interceptors.add(_AuthInterceptor(_storage));
-    
+    // Intercepteur pour ajouter le token d'authentification
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await _storage.read(key: 'auth_token');
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          // Token expiré, nettoyer le storage
+          await _storage.delete(key: 'auth_token');
+          await _storage.delete(key: 'user_data');
+        }
+        handler.next(error);
+      },
+    ));
+
+    // Logs en mode debug
     if (kDebugMode) {
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
@@ -51,47 +65,44 @@ class DioClient {
         requestHeader: true,
         responseHeader: false,
         error: true,
-        logPrint: (obj) => print('🌐 API: $obj'),
       ));
     }
   }
-}
 
-/// Intercepteur d'authentification
-class _AuthInterceptor extends Interceptor {
-  final FlutterSecureStorage _storage;
-
-  _AuthInterceptor(this._storage);
-
-  @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    final token = await _storage.read(key: 'auth_token');
-    if (token != null) {
-      options.headers['Authorization'] = 'Bearer $token';
-    }
-    super.onRequest(options, handler);
+  factory DioClient() {
+    _instance ??= DioClient._internal();
+    return _instance!;
   }
 
-  @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401) {
-      await _storage.deleteAll();
-    }
-    super.onError(err, handler);
-  }
+  Dio get dio => _dio;
 }
 
-/// Client API principal avec Retrofit
+/// Exception personnalisée pour l'API
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+  final List<String>? errors;
+
+  ApiException({
+    required this.message,
+    this.statusCode,
+    this.errors,
+  });
+
+  @override
+  String toString() => 'ApiException: $message';
+}
+
 @RestApi()
 abstract class StarlaneApiClient {
-  factory StarlaneApiClient(Dio dio, {String baseUrl}) = _StarlaneApiClient;
+  factory StarlaneApiClient(Dio dio) = _StarlaneApiClient;
 
   // ========== AUTH ENDPOINTS ==========
   @POST('/auth/register')
-  Future<ApiResponse<AuthResponse>> register(@Body() RegisterRequest request);
+  Future<ApiResponse<User>> register(@Body() RegisterRequest request);
 
   @POST('/auth/login')
-  Future<ApiResponse<AuthResponse>> login(@Body() LoginRequest request);
+  Future<ApiResponse<LoginResponse>> login(@Body() LoginRequest request);
 
   @GET('/auth/profile')
   Future<ApiResponse<User>> getProfile();
@@ -106,7 +117,7 @@ abstract class StarlaneApiClient {
   @GET('/users')
   Future<ApiResponse<PaginatedResponse<User>>> getUsers({
     @Query('page') int page = 1,
-    @Query('limit') int limit = 10,
+    @Query('limit') int limit = 20,
     @Query('role') String? role,
     @Query('status') String? status,
     @Query('search') String? search,
@@ -149,35 +160,8 @@ abstract class StarlaneApiClient {
     @Body() UpdateActivityRequest request,
   );
 
-  // ✅ CHANGÉ: retourne un message au lieu de void
   @DELETE('/activities/{id}')
   Future<ApiResponse<String>> deleteActivity(@Path('id') String id);
-
-  // ========== BOOKING ENDPOINTS ==========
-  @GET('/bookings')
-  Future<ApiResponse<List<Booking>>> getBookings({
-    @Query('page') int page = 1,
-    @Query('limit') int limit = 20,
-    @Query('status') String? status,
-  });
-
-  @GET('/bookings/{id}')
-  Future<ApiResponse<Booking>> getBookingById(@Path('id') String id);
-
-  @POST('/bookings')
-  Future<ApiResponse<Booking>> createBooking(
-    @Body() CreateBookingRequest request,
-  );
-
-  @PUT('/bookings/{id}')
-  Future<ApiResponse<Booking>> updateBooking(
-    @Path('id') String id,
-    @Body() UpdateBookingRequest request,
-  );
-
-  // ✅ CHANGÉ: retourne un message au lieu de void
-  @DELETE('/bookings/{id}')
-  Future<ApiResponse<String>> cancelBooking(@Path('id') String id);
 
   // ========== HEALTH CHECK ==========
   @GET('/health')
@@ -268,189 +252,107 @@ class Pagination {
   Map<String, dynamic> toJson() => _$PaginationToJson(this);
 }
 
-// ========== BOOKING MODELS ==========
+// ========== AUTH REQUEST MODELS ==========
 @JsonSerializable()
-class Booking {
-  final String id;
-  final String activityId;
-  final String clientId;
-  final String providerId;
-  final String bookingNumber;
-  final BookingDate bookingDate;
-  final BookingPricing pricing;
-  final BookingStatus status;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+class RegisterRequest {
+  final String name;
+  final String email;
+  final String password;
+  final String? phone;
+  final String role;
+  final String? companyName;
+  final String? location;
 
-  Booking({
-    required this.id,
-    required this.activityId,
-    required this.clientId,
-    required this.providerId,
-    required this.bookingNumber,
-    required this.bookingDate,
-    required this.pricing,
-    required this.status,
-    required this.createdAt,
-    required this.updatedAt,
+  RegisterRequest({
+    required this.name,
+    required this.email,
+    required this.password,
+    this.phone,
+    this.role = 'client',
+    this.companyName,
+    this.location,
   });
 
-  factory Booking.fromJson(Map<String, dynamic> json) =>
-      _$BookingFromJson(json);
+  factory RegisterRequest.fromJson(Map<String, dynamic> json) =>
+      _$RegisterRequestFromJson(json);
 
-  Map<String, dynamic> toJson() => _$BookingToJson(this);
+  Map<String, dynamic> toJson() => _$RegisterRequestToJson(this);
 }
 
 @JsonSerializable()
-class BookingDate {
-  final DateTime start;
-  final DateTime end;
+class LoginRequest {
+  final String email;
+  final String password;
 
-  BookingDate({
-    required this.start,
-    required this.end,
+  LoginRequest({
+    required this.email,
+    required this.password,
   });
 
-  factory BookingDate.fromJson(Map<String, dynamic> json) =>
-      _$BookingDateFromJson(json);
+  factory LoginRequest.fromJson(Map<String, dynamic> json) =>
+      _$LoginRequestFromJson(json);
 
-  Map<String, dynamic> toJson() => _$BookingDateToJson(this);
+  Map<String, dynamic> toJson() => _$LoginRequestToJson(this);
 }
 
 @JsonSerializable()
-class BookingPricing {
-  final double baseAmount;
-  final double totalAmount;
-  final String currency;
+class LoginResponse {
+  final User user;
+  final String token;
 
-  BookingPricing({
-    required this.baseAmount,
-    required this.totalAmount,
-    required this.currency,
+  LoginResponse({
+    required this.user,
+    required this.token,
   });
 
-  factory BookingPricing.fromJson(Map<String, dynamic> json) =>
-      _$BookingPricingFromJson(json);
+  factory LoginResponse.fromJson(Map<String, dynamic> json) =>
+      _$LoginResponseFromJson(json);
 
-  Map<String, dynamic> toJson() => _$BookingPricingToJson(this);
-}
-
-enum BookingStatus {
-  @JsonValue('pending')
-  pending,
-  @JsonValue('confirmed')
-  confirmed,
-  @JsonValue('in_progress')
-  inProgress,
-  @JsonValue('completed')
-  completed,
-  @JsonValue('cancelled')
-  cancelled,
-  @JsonValue('refunded')
-  refunded;
-
-  String get displayName {
-    switch (this) {
-      case BookingStatus.pending:
-        return 'En attente';
-      case BookingStatus.confirmed:
-        return 'Confirmée';
-      case BookingStatus.inProgress:
-        return 'En cours';
-      case BookingStatus.completed:
-        return 'Terminée';
-      case BookingStatus.cancelled:
-        return 'Annulée';
-      case BookingStatus.refunded:
-        return 'Remboursée';
-    }
-  }
-}
-
-// ========== BOOKING REQUEST MODELS ==========
-@JsonSerializable()
-class CreateBookingRequest {
-  final String activityId;
-  final DateTime startDate;
-  final DateTime endDate;
-  final int participants;
-
-  CreateBookingRequest({
-    required this.activityId,
-    required this.startDate,
-    required this.endDate,
-    required this.participants,
-  });
-
-  factory CreateBookingRequest.fromJson(Map<String, dynamic> json) =>
-      _$CreateBookingRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$CreateBookingRequestToJson(this);
+  Map<String, dynamic> toJson() => _$LoginResponseToJson(this);
 }
 
 @JsonSerializable()
-class UpdateBookingRequest {
-  final DateTime? startDate;
-  final DateTime? endDate;
-  final int? participants;
-  final BookingStatus? status;
+class UpdateProfileRequest {
+  final String? name;
+  final String? phone;
+  final String? location;
+  final String? companyName;
 
-  UpdateBookingRequest({
-    this.startDate,
-    this.endDate,
-    this.participants,
-    this.status,
+  UpdateProfileRequest({
+    this.name,
+    this.phone,
+    this.location,
+    this.companyName,
   });
 
-  factory UpdateBookingRequest.fromJson(Map<String, dynamic> json) =>
-      _$UpdateBookingRequestFromJson(json);
+  factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateProfileRequestFromJson(json);
 
-  Map<String, dynamic> toJson() => _$UpdateBookingRequestToJson(this);
+  Map<String, dynamic> toJson() => _$UpdateProfileRequestToJson(this);
 }
 
-// ========== UPDATE USER REQUEST ==========
 @JsonSerializable()
 class UpdateUserRequest {
   final String? name;
   final String? email;
   final String? phone;
+  final String? role;
+  final String? status;
   final String? location;
+  final String? companyName;
 
   UpdateUserRequest({
     this.name,
     this.email,
     this.phone,
+    this.role,
+    this.status,
     this.location,
+    this.companyName,
   });
 
   factory UpdateUserRequest.fromJson(Map<String, dynamic> json) =>
       _$UpdateUserRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$UpdateUserRequestToJson(this);
-}
-
-// ========== EXCEPTION CLASSES ==========
-class AuthException implements Exception {
-  final String message;
-  final List<String>? errors;
-
-  AuthException({required this.message, this.errors});
-
-  @override
-  String toString() => 'AuthException: $message';
-}
-
-class ApiException implements Exception {
-  final String message;
-  final int? statusCode;
-  final List<String>? errors;
-
-  ApiException({
-    required this.message,
-    this.statusCode,
-    this.errors,
-  });
-
-  @override
-  String toString() => 'ApiException($statusCode): $message';
 }

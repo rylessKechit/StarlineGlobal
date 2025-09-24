@@ -1,3 +1,4 @@
+// Path: starlane_mobile/starlane_client/lib/features/client/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,10 +12,13 @@ import '../widgets/search_section.dart';
 import '../widgets/categories_grid_section.dart';
 import '../widgets/featured_services_section.dart';
 
-// Bloc
+// Blocs et repositories
 import '../bloc/activity_bloc.dart';
+import '../bloc/service_bloc.dart';
 import '../repositories/activity_repository.dart';
+import '../repositories/service_repository.dart';
 import '../../../data/api/api_client.dart';
+import '../../../data/api/service_api_client.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -51,8 +55,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   }
 
   void _onSearchChanged(String query) {
-    // TODO: Implémenter la recherche avec le bloc
+    // TODO: Implémenter la recherche avec les blocs
     if (query.isNotEmpty) {
+      // Pour l'instant, on utilise encore ActivityBloc pour la recherche
+      // car les services n'ont pas de fonction de recherche textuelle
       context.read<ActivityBloc>().add(
         ActivitySearchRequested(query: query),
       );
@@ -62,12 +68,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<ActivityBloc>(
-      create: (context) => ActivityBloc(
-        activityRepository: ActivityRepositoryImpl(
-          apiClient: StarlaneApiClient(DioClient().dio),
+    return MultiBlocProvider(
+      providers: [
+        // Provider pour ActivityBloc (pour la recherche et autres fonctionnalités)
+        BlocProvider<ActivityBloc>(
+          create: (context) => ActivityBloc(
+            activityRepository: context.read<ActivityRepository>(),
+          ),
         ),
-      ),
+        // Provider pour ServiceBloc (pour les services phares)
+        BlocProvider<ServiceBloc>(
+          create: (context) => ServiceBloc(
+            serviceRepository: context.read<ServiceRepository>(),
+          ),
+        ),
+      ],
       child: Scaffold(
         backgroundColor: StarlaneColors.gray50,
         body: Column(
@@ -103,8 +118,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
+                  // Rafraîchir les deux types de données
                   context.read<ActivityBloc>()
                       .add(ActivityFeaturedLoadRequested());
+                  context.read<ServiceBloc>()
+                      .add(ServiceFeaturedLoadRequested());
                 },
                 child: SingleChildScrollView(
                   child: Column(
@@ -118,7 +136,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       
                       SizedBox(height: 6.h),
                       
-                      // Services phares - AVEC VRAIES DONNÉES
+                      // ✅ SERVICES PHARES - UTILISE MAINTENANT ServiceBloc
                       FeaturedServicesSection(
                         onServiceTap: _onServiceTap,
                       ),

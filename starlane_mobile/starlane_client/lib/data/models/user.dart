@@ -1,3 +1,4 @@
+// Path: starlane_mobile/starlane_client/lib/data/models/user.dart
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -5,27 +6,19 @@ part 'user.g.dart';
 
 @JsonSerializable()
 class User extends Equatable {
+  @JsonKey(name: '_id')
   final String id;
   final String name;
   final String email;
   final String? phone;
   final UserRole role;
   final UserStatus status;
-  final String? avatar;
-  final String? location;
-  final double? totalSpent;
-  final String? favoriteDriver;
   final String? companyName;
-  final double? totalRevenue;
-  final double? rating;
-  final int? reviewsCount;
-  final int? totalBookings;
-  final bool emailVerified;
-  final DateTime? lastLogin;
-  final DateTime? memberSince;
+  final String? location;
+  final String? avatar;
   final DateTime createdAt;
   final DateTime updatedAt;
-
+  
   const User({
     required this.id,
     required this.name,
@@ -33,18 +26,9 @@ class User extends Equatable {
     this.phone,
     required this.role,
     required this.status,
-    this.avatar,
-    this.location,
-    this.totalSpent,
-    this.favoriteDriver,
     this.companyName,
-    this.totalRevenue,
-    this.rating,
-    this.reviewsCount,
-    this.totalBookings,
-    this.emailVerified = false,
-    this.lastLogin,
-    this.memberSince,
+    this.location,
+    this.avatar,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -52,14 +36,8 @@ class User extends Equatable {
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
   Map<String, dynamic> toJson() => _$UserToJson(this);
 
-  String get initials {
-    final parts = name.split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase();
-  }
-
+  // Getters utilitaires
+  String get displayName => name;
   bool get isActive => status == UserStatus.active;
   bool get isClient => role == UserRole.client;
   bool get isProvider => role == UserRole.prestataire;
@@ -67,10 +45,8 @@ class User extends Equatable {
 
   @override
   List<Object?> get props => [
-    id, name, email, phone, role, status, avatar, location,
-    totalSpent, favoriteDriver, companyName, totalRevenue,
-    rating, reviewsCount, totalBookings, emailVerified,
-    lastLogin, memberSince, createdAt, updatedAt
+    id, name, email, phone, role, status, 
+    companyName, location, avatar, createdAt, updatedAt
   ];
 }
 
@@ -82,7 +58,7 @@ enum UserRole {
   prestataire,
   @JsonValue('admin')
   admin;
-
+  
   String get displayName {
     switch (this) {
       case UserRole.client:
@@ -105,7 +81,7 @@ enum UserStatus {
   suspended,
   @JsonValue('inactive')
   inactive;
-
+  
   String get displayName {
     switch (this) {
       case UserStatus.active:
@@ -118,10 +94,9 @@ enum UserStatus {
         return 'Inactif';
     }
   }
-
-  bool get canAccess => this == UserStatus.active;
 }
 
+// Response pour l'authentification
 @JsonSerializable()
 class AuthResponse extends Equatable {
   final User user;
@@ -132,109 +107,26 @@ class AuthResponse extends Equatable {
     required this.token,
   });
 
-  factory AuthResponse.fromJson(Map<String, dynamic> json) =>
+  factory AuthResponse.fromJson(Map<String, dynamic> json) => 
       _$AuthResponseFromJson(json);
-  
   Map<String, dynamic> toJson() => _$AuthResponseToJson(this);
 
   @override
   List<Object> get props => [user, token];
 }
 
-@JsonSerializable()
-class LoginRequest extends Equatable {
-  final String email;
-  final String password;
-  final String role;
+// Exception pour l'authentification
+class AuthException implements Exception {
+  final String message;
+  final int? statusCode;
+  final List<String>? errors;
 
-  const LoginRequest({
-    required this.email,
-    required this.password,
-    required this.role,
+  AuthException({
+    required this.message,
+    this.statusCode,
+    this.errors,
   });
 
-  factory LoginRequest.fromJson(Map<String, dynamic> json) =>
-      _$LoginRequestFromJson(json);
-  
-  Map<String, dynamic> toJson() => _$LoginRequestToJson(this);
-
   @override
-  List<Object> get props => [email, password, role];
-}
-
-@JsonSerializable()
-class RegisterRequest extends Equatable {
-  final String name;
-  final String email;
-  final String password;
-  final String? phone;
-  final String role;
-  final String? location;
-  final String? companyName;
-
-  const RegisterRequest({
-    required this.name,
-    required this.email,
-    required this.password,
-    this.phone,
-    required this.role,
-    this.location,
-    this.companyName,
-  });
-
-  factory RegisterRequest.fromJson(Map<String, dynamic> json) =>
-      _$RegisterRequestFromJson(json);
-  
-  Map<String, dynamic> toJson() => _$RegisterRequestToJson(this);
-
-  @override
-  List<Object?> get props => [name, email, password, phone, role, location, companyName];
-}
-
-@JsonSerializable()
-class UpdateProfileRequest extends Equatable {
-  final String? name;
-  final String? phone;
-  final String? location;
-  final String? avatar;
-
-  const UpdateProfileRequest({
-    this.name,
-    this.phone,
-    this.location,
-    this.avatar,
-  });
-
-  factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>
-      _$UpdateProfileRequestFromJson(json);
-  
-  Map<String, dynamic> toJson() => _$UpdateProfileRequestToJson(this);
-
-  @override
-  List<Object?> get props => [name, phone, location, avatar];
-}
-
-@JsonSerializable()
-class UpdateUserRequest extends Equatable {
-  final String? name;
-  final String? phone;
-  final String? location;
-  final String? avatar;
-  final String? status;
-
-  const UpdateUserRequest({
-    this.name,
-    this.phone,
-    this.location,
-    this.avatar,
-    this.status,
-  });
-
-  factory UpdateUserRequest.fromJson(Map<String, dynamic> json) =>
-      _$UpdateUserRequestFromJson(json);
-  
-  Map<String, dynamic> toJson() => _$UpdateUserRequestToJson(this);
-
-  @override
-  List<Object?> get props => [name, phone, location, avatar, status];
+  String toString() => 'AuthException: $message';
 }
