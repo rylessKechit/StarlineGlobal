@@ -1,129 +1,106 @@
-// Path: starlane_mobile/starlane_client/lib/data/models/user.dart
-import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'user.g.dart';
 
+enum UserRole {
+  client,
+  prestataire,
+  admin,
+}
+
+enum UserStatus {
+  active,
+  pending,
+  suspended,
+  inactive,
+}
+
 @JsonSerializable()
-class User extends Equatable {
-  @JsonKey(name: '_id')
+class User {
   final String id;
   final String name;
   final String email;
   final String? phone;
   final UserRole role;
   final UserStatus status;
-  final String? companyName;
   final String? location;
+  final String? companyName;
   final String? avatar;
   final DateTime createdAt;
   final DateTime updatedAt;
-  
-  const User({
+  final DateTime? lastLogin;
+
+  User({
     required this.id,
     required this.name,
     required this.email,
     this.phone,
     required this.role,
     required this.status,
-    this.companyName,
     this.location,
+    this.companyName,
     this.avatar,
     required this.createdAt,
     required this.updatedAt,
+    this.lastLogin,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
   Map<String, dynamic> toJson() => _$UserToJson(this);
 
-  // Getters utilitaires
-  String get displayName => name;
-  bool get isActive => status == UserStatus.active;
-  bool get isClient => role == UserRole.client;
-  bool get isProvider => role == UserRole.prestataire;
-  bool get isAdmin => role == UserRole.admin;
-
-  @override
-  List<Object?> get props => [
-    id, name, email, phone, role, status, 
-    companyName, location, avatar, createdAt, updatedAt
-  ];
-}
-
-@JsonEnum()
-enum UserRole {
-  @JsonValue('client')
-  client,
-  @JsonValue('prestataire')
-  prestataire,
-  @JsonValue('admin')
-  admin;
-  
-  String get displayName {
-    switch (this) {
-      case UserRole.client:
-        return 'Client';
-      case UserRole.prestataire:
-        return 'Prestataire';
-      case UserRole.admin:
-        return 'Administrateur';
-    }
+  User copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? phone,
+    UserRole? role,
+    UserStatus? status,
+    String? location,
+    String? companyName,
+    String? avatar,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? lastLogin,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      role: role ?? this.role,
+      status: status ?? this.status,
+      location: location ?? this.location,
+      companyName: companyName ?? this.companyName,
+      avatar: avatar ?? this.avatar,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lastLogin: lastLogin ?? this.lastLogin,
+    );
   }
 }
 
-@JsonEnum()
-enum UserStatus {
-  @JsonValue('active')
-  active,
-  @JsonValue('pending')
-  pending,
-  @JsonValue('suspended')
-  suspended,
-  @JsonValue('inactive')
-  inactive;
-  
-  String get displayName {
-    switch (this) {
-      case UserStatus.active:
-        return 'Actif';
-      case UserStatus.pending:
-        return 'En attente';
-      case UserStatus.suspended:
-        return 'Suspendu';
-      case UserStatus.inactive:
-        return 'Inactif';
-    }
-  }
-}
-
-// Response pour l'authentification
+// ✅ AJOUT DE LA CLASSE AuthResponse (cette classe reste ici car elle n'existe que dans les models)
 @JsonSerializable()
-class AuthResponse extends Equatable {
+class AuthResponse {
   final User user;
   final String token;
 
-  const AuthResponse({
+  AuthResponse({
     required this.user,
     required this.token,
   });
 
-  factory AuthResponse.fromJson(Map<String, dynamic> json) => 
-      _$AuthResponseFromJson(json);
+  factory AuthResponse.fromJson(Map<String, dynamic> json) => _$AuthResponseFromJson(json);
   Map<String, dynamic> toJson() => _$AuthResponseToJson(this);
-
-  @override
-  List<Object> get props => [user, token];
 }
 
-// Exception pour l'authentification
+// ✅ AJOUT DE LA CLASSE AuthException (cette classe reste ici car elle n'existe que dans les models)
 class AuthException implements Exception {
   final String message;
-  final int? statusCode;
   final List<String>? errors;
 
   AuthException({
     required this.message,
-    this.statusCode,
     this.errors,
   });
 

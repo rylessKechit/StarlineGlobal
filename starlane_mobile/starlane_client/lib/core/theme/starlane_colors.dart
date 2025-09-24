@@ -33,6 +33,10 @@ class StarlaneColors {
   static const Color error = Color(0xFFEF4444); // red-500
   static const Color info = Color(0xFF3B82F6); // blue-500
   
+  // Colors de base
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color black = Color(0xFF000000);
+  
   // Palette Navy
   static const Color navy50 = Color(0xFFF0F9FF);
   static const Color navy100 = Color(0xFFE0F2FE);
@@ -105,6 +109,18 @@ class StarlaneColors {
   static const Color blue800 = Color(0xFF1E40AF);
   static const Color blue900 = Color(0xFF1E3A8A);
   
+  // ✅ AJOUT PALETTE ORANGE MANQUANTE
+  static const Color orange50 = Color(0xFFFFF7ED);
+  static const Color orange100 = Color(0xFFFFEDD5);
+  static const Color orange200 = Color(0xFFFED7AA);
+  static const Color orange300 = Color(0xFFFDBB74);
+  static const Color orange400 = Color(0xFFFB923C);
+  static const Color orange500 = Color(0xFFF97316);
+  static const Color orange600 = Color(0xFFEA580C);
+  static const Color orange700 = Color(0xFFC2410C);
+  static const Color orange800 = Color(0xFF9A3412);
+  static const Color orange900 = Color(0xFF7C2D12);
+  
   // Palette Purple
   static const Color purple50 = Color(0xFFFAF5FF);
   static const Color purple100 = Color(0xFFF3E8FF);
@@ -117,31 +133,47 @@ class StarlaneColors {
   static const Color purple800 = Color(0xFF6B21A8);
   static const Color purple900 = Color(0xFF581C87);
   
-  // Palette Orange
-  static const Color orange50 = Color(0xFFFFF7ED);
-  static const Color orange100 = Color(0xFFFFEDD5);
-  static const Color orange200 = Color(0xFFFED7AA);
-  static const Color orange300 = Color(0xFFFDBA74);
-  static const Color orange400 = Color(0xFFFB923C);
-  static const Color orange500 = Color(0xFFF97316);
-  static const Color orange600 = Color(0xFFEA580C);
-  static const Color orange700 = Color(0xFFC2410C);
-  static const Color orange800 = Color(0xFF9A3412);
-  static const Color orange900 = Color(0xFF7C2D12);
+  // ✅ GRADIENTS EXISTANTS
+  static const Gradient premiumGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [navy600, navy800, navy900],
+  );
   
-  // Colors communes
-  static const Color white = Color(0xFFFFFFFF);
-  static const Color black = Color(0xFF000000);
-  static const Color transparent = Color(0x00000000);
+  static const Gradient luxuryGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [gold400, gold600],
+  );
   
-  // Couleurs de statut pour l'application
-  static const Color activeStatus = emerald500;
-  static const Color pendingStatus = gold500;
-  static const Color inactiveStatus = gray400;
-  static const Color suspendedStatus = red500;
+  // ✅ SHADOWS EXISTANTS
+  static const List<BoxShadow> luxuryShadow = [
+    BoxShadow(
+      color: Color(0x1A000000),
+      offset: Offset(0, 8),
+      blurRadius: 24,
+      spreadRadius: 0,
+    ),
+    BoxShadow(
+      color: Color(0x0F000000),
+      offset: Offset(0, 4),
+      blurRadius: 12,
+      spreadRadius: -2,
+    ),
+  ];
   
-  // Couleurs des rôles
-  static const Color clientRole = navy500;
-  static const Color providerRole = emerald500;
-  static const Color adminRole = purple500;
+  static const List<BoxShadow> softShadow = [
+    BoxShadow(
+      color: Color(0x12000000),
+      offset: Offset(0, 4),
+      blurRadius: 12,
+      spreadRadius: 0,
+    ),
+    BoxShadow(
+      color: Color(0x08000000),
+      offset: Offset(0, 2),
+      blurRadius: 6,
+      spreadRadius: -1,
+    ),
+  ];
 }

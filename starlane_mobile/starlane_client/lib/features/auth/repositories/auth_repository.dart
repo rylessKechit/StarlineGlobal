@@ -1,6 +1,8 @@
+// Path: starlane_mobile/starlane_client/lib/features/auth/repositories/auth_repository.dart
 import 'package:dio/dio.dart';
+// ✅ IMPORTS CORRECTS - Seulement les classes nécessaires
 import '../../../data/api/api_client.dart';
-import '../../../data/models/user.dart';
+import '../../../data/models/user.dart' show User, AuthResponse, AuthException;
 
 abstract class AuthRepository {
   Future<AuthResponse> login(LoginRequest request);
@@ -23,7 +25,11 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await _apiClient.login(request);
       
       if (response.success && response.data != null) {
-        return response.data!;
+        // ✅ CORRIGÉ: Retourner AuthResponse créé à partir de LoginResponse
+        return AuthResponse(
+          user: response.data!.user,
+          token: response.data!.token,
+        );
       } else {
         throw AuthException(
           message: response.message,
@@ -43,7 +49,14 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await _apiClient.register(request);
       
       if (response.success && response.data != null) {
-        return response.data!;
+        // ✅ CORRIGÉ: Pour le register, on doit faire un login après
+        // ou l'API doit retourner le token avec l'utilisateur
+        // Pour l'instant, on crée une réponse avec un token vide
+        // Il faudra adapter selon la réponse réelle de votre API
+        return AuthResponse(
+          user: response.data!,
+          token: '', // TODO: L'API register doit retourner un token
+        );
       } else {
         throw AuthException(
           message: response.message,
@@ -114,8 +127,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> healthCheck() async {
     try {
-      final response = await _apiClient.healthCheck();
-      return response.success;
+      // Pour l'instant, on fait un simple ping vers getProfile
+      // Vous pouvez ajouter un endpoint /health dans votre API
+      await _apiClient.getProfile();
+      return true;
     } catch (e) {
       return false;
     }
@@ -132,7 +147,7 @@ class AuthRepositoryImpl implements AuthRepository {
       
       case DioExceptionType.connectionError:
         return AuthException(
-          message: 'Impossible de se connecter au serveur. Vérifiez que votre API tourne sur le port 4000.',
+          message: 'Impossible de se connecter au serveur. Vérifiez que votre API tourne sur le port 5000.',
         );
       
       case DioExceptionType.badResponse:
@@ -158,18 +173,20 @@ class AuthRepositoryImpl implements AuthRepository {
             return AuthException(message: 'Accès refusé. Votre compte peut être suspendu.');
           case 404:
             return AuthException(message: 'Service non trouvé. Vérifiez l\'URL de votre API.');
-          case 409:
-            return AuthException(message: 'Un compte avec cet email existe déjà');
           case 422:
-            return AuthException(message: 'Données de validation invalides', errors: errors);
+            return AuthException(message: 'Données de validation incorrectes', errors: errors);
           case 500:
-            return AuthException(message: 'Erreur interne du serveur. Veuillez réessayer plus tard.');
+            return AuthException(message: 'Erreur interne du serveur. Veuillez réessayer.');
           default:
-            return AuthException(message: 'Erreur du serveur (Code: $statusCode)');
+            return AuthException(message: 'Erreur inattendue ($statusCode): $message');
         }
       
+      case DioExceptionType.cancel:
+        return AuthException(message: 'Requête annulée');
+      
+      case DioExceptionType.unknown:
       default:
-        return AuthException(message: 'Erreur de réseau inattendue');
+        return AuthException(message: 'Erreur de connexion inconnue');
     }
   }
 }

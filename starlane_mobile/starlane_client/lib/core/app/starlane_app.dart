@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../theme/starlane_theme.dart';
 import '../router/app_router.dart';
 import '../../data/api/api_client.dart';
+import '../../data/api/service_api_client.dart';
 import '../../features/auth/repositories/auth_repository.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/client/repositories/activity_repository.dart';
@@ -23,8 +24,10 @@ class StarlaneApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        // ✅ CRÉATION DU CLIENT API PARTAGÉ
-        final apiClient = StarlaneApiClient(DioClient().dio);
+        // ✅ CRÉATION DU CLIENT DIO PARTAGÉ
+        final dioClient = DioClient();
+        final apiClient = StarlaneApiClient(dioClient.dio);
+        final serviceApiClient = ServiceApiClient(dioClient.dio);
         
         return MultiRepositoryProvider(
           providers: [
@@ -35,9 +38,9 @@ class StarlaneApp extends StatelessWidget {
             RepositoryProvider<ActivityRepository>(
               create: (context) => ActivityRepositoryImpl(apiClient: apiClient),
             ),
-            // ✅ NOUVEAU REPOSITORY POUR LES SERVICES
+            // ✅ NOUVEAU REPOSITORY POUR LES SERVICES - CORRIGÉ
             RepositoryProvider<ServiceRepository>(
-              create: (context) => ServiceRepositoryImpl(apiClient: apiClient),
+              create: (context) => ServiceRepositoryImpl(serviceApiClient: serviceApiClient),
             ),
           ],
           child: BlocProvider(

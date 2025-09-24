@@ -6,6 +6,69 @@ part of 'api_client.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+LoginRequest _$LoginRequestFromJson(Map<String, dynamic> json) => LoginRequest(
+      email: json['email'] as String,
+      password: json['password'] as String,
+    );
+
+Map<String, dynamic> _$LoginRequestToJson(LoginRequest instance) =>
+    <String, dynamic>{
+      'email': instance.email,
+      'password': instance.password,
+    };
+
+RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
+    RegisterRequest(
+      name: json['name'] as String,
+      email: json['email'] as String,
+      password: json['password'] as String,
+      phone: json['phone'] as String?,
+      role: json['role'] as String? ?? 'client',
+      location: json['location'] as String?,
+      companyName: json['companyName'] as String?,
+    );
+
+Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'email': instance.email,
+      'password': instance.password,
+      'phone': instance.phone,
+      'role': instance.role,
+      'location': instance.location,
+      'companyName': instance.companyName,
+    };
+
+UpdateProfileRequest _$UpdateProfileRequestFromJson(
+        Map<String, dynamic> json) =>
+    UpdateProfileRequest(
+      name: json['name'] as String?,
+      phone: json['phone'] as String?,
+      location: json['location'] as String?,
+      companyName: json['companyName'] as String?,
+    );
+
+Map<String, dynamic> _$UpdateProfileRequestToJson(
+        UpdateProfileRequest instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'phone': instance.phone,
+      'location': instance.location,
+      'companyName': instance.companyName,
+    };
+
+LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) =>
+    LoginResponse(
+      user: User.fromJson(json['user'] as Map<String, dynamic>),
+      token: json['token'] as String,
+    );
+
+Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
+    <String, dynamic>{
+      'user': instance.user,
+      'token': instance.token,
+    };
+
 HealthResponse _$HealthResponseFromJson(Map<String, dynamic> json) =>
     HealthResponse(
       message: json['message'] as String,
@@ -91,67 +154,105 @@ Map<String, dynamic> _$PaginationToJson(Pagination instance) =>
       'hasPrev': instance.hasPrev,
     };
 
-RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
-    RegisterRequest(
-      name: json['name'] as String,
-      email: json['email'] as String,
-      password: json['password'] as String,
-      phone: json['phone'] as String?,
-      role: json['role'] as String? ?? 'client',
-      companyName: json['companyName'] as String?,
-      location: json['location'] as String?,
+Booking _$BookingFromJson(Map<String, dynamic> json) => Booking(
+      id: json['id'] as String,
+      activityId: json['activityId'] as String,
+      clientId: json['clientId'] as String,
+      providerId: json['providerId'] as String,
+      bookingNumber: json['bookingNumber'] as String,
+      bookingDate:
+          BookingDate.fromJson(json['bookingDate'] as Map<String, dynamic>),
+      pricing: BookingPricing.fromJson(json['pricing'] as Map<String, dynamic>),
+      status: $enumDecode(_$BookingStatusEnumMap, json['status']),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
 
-Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
-    <String, dynamic>{
-      'name': instance.name,
-      'email': instance.email,
-      'password': instance.password,
-      'phone': instance.phone,
-      'role': instance.role,
-      'companyName': instance.companyName,
-      'location': instance.location,
+Map<String, dynamic> _$BookingToJson(Booking instance) => <String, dynamic>{
+      'id': instance.id,
+      'activityId': instance.activityId,
+      'clientId': instance.clientId,
+      'providerId': instance.providerId,
+      'bookingNumber': instance.bookingNumber,
+      'bookingDate': instance.bookingDate,
+      'pricing': instance.pricing,
+      'status': _$BookingStatusEnumMap[instance.status]!,
+      'createdAt': instance.createdAt.toIso8601String(),
+      'updatedAt': instance.updatedAt.toIso8601String(),
     };
 
-LoginRequest _$LoginRequestFromJson(Map<String, dynamic> json) => LoginRequest(
-      email: json['email'] as String,
-      password: json['password'] as String,
+const _$BookingStatusEnumMap = {
+  BookingStatus.pending: 'pending',
+  BookingStatus.confirmed: 'confirmed',
+  BookingStatus.inProgress: 'in_progress',
+  BookingStatus.completed: 'completed',
+  BookingStatus.cancelled: 'cancelled',
+  BookingStatus.refunded: 'refunded',
+};
+
+BookingDate _$BookingDateFromJson(Map<String, dynamic> json) => BookingDate(
+      start: DateTime.parse(json['start'] as String),
+      end: DateTime.parse(json['end'] as String),
     );
 
-Map<String, dynamic> _$LoginRequestToJson(LoginRequest instance) =>
+Map<String, dynamic> _$BookingDateToJson(BookingDate instance) =>
     <String, dynamic>{
-      'email': instance.email,
-      'password': instance.password,
+      'start': instance.start.toIso8601String(),
+      'end': instance.end.toIso8601String(),
     };
 
-LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) =>
-    LoginResponse(
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
-      token: json['token'] as String,
+BookingPricing _$BookingPricingFromJson(Map<String, dynamic> json) =>
+    BookingPricing(
+      baseAmount: (json['baseAmount'] as num).toDouble(),
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      currency: json['currency'] as String,
     );
 
-Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
+Map<String, dynamic> _$BookingPricingToJson(BookingPricing instance) =>
     <String, dynamic>{
-      'user': instance.user,
-      'token': instance.token,
+      'baseAmount': instance.baseAmount,
+      'totalAmount': instance.totalAmount,
+      'currency': instance.currency,
     };
 
-UpdateProfileRequest _$UpdateProfileRequestFromJson(
+CreateBookingRequest _$CreateBookingRequestFromJson(
         Map<String, dynamic> json) =>
-    UpdateProfileRequest(
-      name: json['name'] as String?,
-      phone: json['phone'] as String?,
-      location: json['location'] as String?,
-      companyName: json['companyName'] as String?,
+    CreateBookingRequest(
+      activityId: json['activityId'] as String,
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: DateTime.parse(json['endDate'] as String),
+      participants: (json['participants'] as num).toInt(),
     );
 
-Map<String, dynamic> _$UpdateProfileRequestToJson(
-        UpdateProfileRequest instance) =>
+Map<String, dynamic> _$CreateBookingRequestToJson(
+        CreateBookingRequest instance) =>
     <String, dynamic>{
-      'name': instance.name,
-      'phone': instance.phone,
-      'location': instance.location,
-      'companyName': instance.companyName,
+      'activityId': instance.activityId,
+      'startDate': instance.startDate.toIso8601String(),
+      'endDate': instance.endDate.toIso8601String(),
+      'participants': instance.participants,
+    };
+
+UpdateBookingRequest _$UpdateBookingRequestFromJson(
+        Map<String, dynamic> json) =>
+    UpdateBookingRequest(
+      startDate: json['startDate'] == null
+          ? null
+          : DateTime.parse(json['startDate'] as String),
+      endDate: json['endDate'] == null
+          ? null
+          : DateTime.parse(json['endDate'] as String),
+      participants: (json['participants'] as num?)?.toInt(),
+      status: $enumDecodeNullable(_$BookingStatusEnumMap, json['status']),
+    );
+
+Map<String, dynamic> _$UpdateBookingRequestToJson(
+        UpdateBookingRequest instance) =>
+    <String, dynamic>{
+      'startDate': instance.startDate?.toIso8601String(),
+      'endDate': instance.endDate?.toIso8601String(),
+      'participants': instance.participants,
+      'status': _$BookingStatusEnumMap[instance.status],
     };
 
 UpdateUserRequest _$UpdateUserRequestFromJson(Map<String, dynamic> json) =>
@@ -159,10 +260,7 @@ UpdateUserRequest _$UpdateUserRequestFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String?,
       email: json['email'] as String?,
       phone: json['phone'] as String?,
-      role: json['role'] as String?,
-      status: json['status'] as String?,
       location: json['location'] as String?,
-      companyName: json['companyName'] as String?,
     );
 
 Map<String, dynamic> _$UpdateUserRequestToJson(UpdateUserRequest instance) =>
@@ -170,10 +268,7 @@ Map<String, dynamic> _$UpdateUserRequestToJson(UpdateUserRequest instance) =>
       'name': instance.name,
       'email': instance.email,
       'phone': instance.phone,
-      'role': instance.role,
-      'status': instance.status,
       'location': instance.location,
-      'companyName': instance.companyName,
     };
 
 // **************************************************************************
@@ -381,7 +476,7 @@ class _StarlaneApiClient implements StarlaneApiClient {
   @override
   Future<ApiResponse<PaginatedResponse<User>>> getUsers({
     int page = 1,
-    int limit = 20,
+    int limit = 10,
     String? role,
     String? status,
     String? search,
@@ -732,6 +827,206 @@ class _StarlaneApiClient implements StarlaneApiClient {
         .compose(
           _dio.options,
           '/activities/${id}',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        )));
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ApiResponse<String> _value;
+    try {
+      _value = ApiResponse<String>.fromJson(
+        _result.data!,
+        (json) => json as String,
+      );
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<ApiResponse<List<Booking>>> getBookings({
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'page': page,
+      r'limit': limit,
+      r'status': status,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<ApiResponse<List<Booking>>>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/bookings',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        )));
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ApiResponse<List<Booking>> _value;
+    try {
+      _value = ApiResponse<List<Booking>>.fromJson(
+        _result.data!,
+        (json) => json is List<dynamic>
+            ? json
+                .map<Booking>(
+                    (i) => Booking.fromJson(i as Map<String, dynamic>))
+                .toList()
+            : List.empty(),
+      );
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<ApiResponse<Booking>> getBookingById(String id) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<ApiResponse<Booking>>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/bookings/${id}',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        )));
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ApiResponse<Booking> _value;
+    try {
+      _value = ApiResponse<Booking>.fromJson(
+        _result.data!,
+        (json) => Booking.fromJson(json as Map<String, dynamic>),
+      );
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<ApiResponse<Booking>> createBooking(
+      CreateBookingRequest request) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(request.toJson());
+    final _options = _setStreamType<ApiResponse<Booking>>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/bookings',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        )));
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ApiResponse<Booking> _value;
+    try {
+      _value = ApiResponse<Booking>.fromJson(
+        _result.data!,
+        (json) => Booking.fromJson(json as Map<String, dynamic>),
+      );
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<ApiResponse<Booking>> updateBooking(
+    String id,
+    UpdateBookingRequest request,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(request.toJson());
+    final _options = _setStreamType<ApiResponse<Booking>>(Options(
+      method: 'PUT',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/bookings/${id}',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        )));
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ApiResponse<Booking> _value;
+    try {
+      _value = ApiResponse<Booking>.fromJson(
+        _result.data!,
+        (json) => Booking.fromJson(json as Map<String, dynamic>),
+      );
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<ApiResponse<String>> cancelBooking(String id) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<ApiResponse<String>>(Options(
+      method: 'DELETE',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/bookings/${id}',
           queryParameters: queryParameters,
           data: _data,
         )

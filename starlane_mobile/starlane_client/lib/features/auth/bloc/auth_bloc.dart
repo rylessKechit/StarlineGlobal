@@ -1,10 +1,14 @@
+// Path: starlane_mobile/starlane_client/lib/features/auth/bloc/auth_bloc.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:equatable/equatable.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import '../../../data/models/user.dart';
-import '../../../data/api/api_client.dart';
+
+// ✅ IMPORTS CORRECTS - Classes bien séparées
+import '../../../data/api/api_client.dart' show LoginRequest, RegisterRequest, UpdateProfileRequest;
+import '../../../data/models/user.dart' show User, AuthResponse, UserRole, AuthException;
 import '../repositories/auth_repository.dart';
 
 part 'auth_event.dart';
@@ -18,9 +22,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({
     required AuthRepository authRepository,
     required FlutterSecureStorage storage,
-  })  : _authRepository = authRepository,
-        _storage = storage,
-        super(AuthInitial()) {
+  }) : _authRepository = authRepository,
+       _storage = storage,
+       super(AuthInitial()) {
     
     on<AuthStarted>(_onAuthStarted);
     on<AuthLoginRequested>(_onLoginRequested);
@@ -37,28 +41,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return super.close();
   }
 
-  Future<void> _onAuthStarted(AuthStarted event, Emitter<AuthState> emit) async {
+  Future<void> _onAuthStarted(
+    AuthStarted event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     
     try {
       final token = await _storage.read(key: 'auth_token');
-      final userJson = await _storage.read(key: 'user_data');
+      final userDataString = await _storage.read(key: 'user_data');
       
-      if (token != null && userJson != null && !JwtDecoder.isExpired(token)) {
-        final userData = Map<String, dynamic>.from(
-          Uri.splitQueryString(userJson)
-        );
-        final user = User.fromJson(userData);
-        
-        // Démarrer le timer de rafraîchissement du token
-        _startTokenTimer(token);
-        
-        emit(AuthAuthenticated(user: user, token: token));
-      } else {
-        // Token expiré ou inexistant
-        await _clearStorage();
-        emit(AuthUnauthenticated());
+      if (token != null && userDataString != null) {
+        // Vérifier si le token est valide et non expiré
+        if (!JwtDecoder.isExpired(token)) {
+          final userMap = jsonDecode(userDataString);
+          final user = User.fromJson(userMap);
+          
+          // Démarrer le timer de rafraîchissement
+          _startTokenTimer(token);
+          
+          emit(AuthAuthenticated(user: user, token: token));
+          return;
+        }
       }
+      
+      // Token expiré ou inexistant
+      await _clearStorage();
+      emit(AuthUnauthenticated());
     } catch (e) {
       await _clearStorage();
       emit(AuthFailure(error: 'Erreur lors de la vérification de l\'authentification'));
@@ -72,17 +81,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     
     try {
+      // ✅ CORRIGÉ: Suppression du paramètre 'role' qui n'existe pas dans LoginRequest
       final request = LoginRequest(
         email: event.email,
         password: event.password,
-        role: event.role.name,
       );
       
       final response = await _authRepository.login(request);
       
       // Stocker les données d'authentification
       await _storage.write(key: 'auth_token', value: response.token);
-      await _storage.write(key: 'user_data', value: response.user.toJson().toString());
+      await _storage.write(key: 'user_data', value: jsonEncode(response.user.toJson()));
       
       // Démarrer le timer de rafraîchissement du token
       _startTokenTimer(response.token);
@@ -115,17 +124,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       
       final response = await _authRepository.register(request);
       
-      // Stocker les données d'authentification
-      await _storage.write(key: 'auth_token', value: response.token);
-      await _storage.write(key: 'user_data', value: response.user.toJson().toString());
-      
-      // Démarrer le timer de rafraîchissement du token
-      _startTokenTimer(response.token);
-      
-      emit(AuthAuthenticated(
-        user: response.user,
-        token: response.token,
-      ));
+      // Si le register ne retourne pas de token, faire un login automatique
+      if (response.token.isEmpty) {
+        // Faire un login automatique après inscription
+        final loginRequest = LoginRequest(
+          email: event.email,
+          password: event.password,
+        );
+        final loginResponse = await _authRepository.login(loginRequest);
+        
+        // Stocker les données d'authentification du login
+        await _storage.write(key: 'auth_token', value: loginResponse.token);
+        await _storage.write(key: 'user_data', value: jsonEncode(loginResponse.user.toJson()));
+        
+        _startTokenTimer(loginResponse.token);
+        
+        emit(AuthAuthenticated(
+          user: loginResponse.user,
+          token: loginResponse.token,
+        ));
+      } else {
+        // Si le register retourne un token
+        await _storage.write(key: 'auth_token', value: response.token);
+        await _storage.write(key: 'user_data', value: jsonEncode(response.user.toJson()));
+        
+        _startTokenTimer(response.token);
+        
+        emit(AuthAuthenticated(
+          user: response.user,
+          token: response.token,
+        ));
+      }
     } catch (e) {
       emit(AuthFailure(error: _getErrorMessage(e)));
     }
@@ -161,17 +190,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     
     try {
+      // ✅ CORRIGÉ: Suppression du paramètre 'avatar' qui n'existe pas dans UpdateProfileRequest
       final request = UpdateProfileRequest(
         name: event.name,
         phone: event.phone,
         location: event.location,
-        avatar: event.avatar,
+        companyName: null, // Peut être ajouté selon les besoins
       );
       
       final updatedUser = await _authRepository.updateProfile(request);
       
-      // Mettre à jour le stockage
-      await _storage.write(key: 'user_data', value: updatedUser.toJson().toString());
+      // Mettre à jour le stockage local
+      await _storage.write(key: 'user_data', value: jsonEncode(updatedUser.toJson()));
       
       emit(AuthAuthenticated(
         user: updatedUser,
@@ -179,6 +209,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
     } catch (e) {
       emit(AuthFailure(error: _getErrorMessage(e)));
+      
+      // Revenir à l'état précédent en cas d'erreur
+      emit(currentState);
     }
   }
 
@@ -187,20 +220,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      // Pour l'instant, on récupère juste le profil pour vérifier le token
-      final user = await _authRepository.getProfile();
-      
-      final currentState = state;
-      if (currentState is AuthAuthenticated) {
-        emit(AuthAuthenticated(
-          user: user,
-          token: currentState.token,
-        ));
+      final token = await _storage.read(key: 'auth_token');
+      if (token != null && JwtDecoder.isExpired(token)) {
+        await _clearStorage();
+        emit(AuthUnauthenticated());
       }
     } catch (e) {
-      // Token invalide, déconnecter
       await _clearStorage();
-      _tokenTimer?.cancel();
       emit(AuthUnauthenticated());
     }
   }
@@ -209,44 +235,49 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
-    try {
-      final user = await _authRepository.getProfile();
-      
-      final currentState = state;
-      if (currentState is AuthAuthenticated) {
-        emit(AuthAuthenticated(
-          user: user,
-          token: currentState.token,
-        ));
+    final token = await _storage.read(key: 'auth_token');
+    final userDataString = await _storage.read(key: 'user_data');
+    
+    if (token != null && userDataString != null) {
+      try {
+        if (!JwtDecoder.isExpired(token)) {
+          final userMap = jsonDecode(userDataString);
+          final user = User.fromJson(userMap);
+          
+          emit(AuthAuthenticated(user: user, token: token));
+          return;
+        }
+      } catch (e) {
+        // Erreur lors du décodage
       }
-    } catch (e) {
-      emit(AuthFailure(error: _getErrorMessage(e)));
     }
+    
+    await _clearStorage();
+    emit(AuthUnauthenticated());
   }
 
   void _startTokenTimer(String token) {
     _tokenTimer?.cancel();
     
     try {
-      final decodedToken = JwtDecoder.decode(token);
-      final exp = decodedToken['exp'] as int;
-      final expiryDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-      final now = DateTime.now();
+      final expiryDate = JwtDecoder.getExpirationDate(token);
+      final timeUntilExpiry = expiryDate.difference(DateTime.now());
       
-      // Programmer le rafraîchissement 5 minutes avant l'expiration
-      final refreshTime = expiryDate.subtract(const Duration(minutes: 5));
+      // Rafraîchir le token 5 minutes avant expiration
+      final refreshTime = timeUntilExpiry - const Duration(minutes: 5);
       
-      if (refreshTime.isAfter(now)) {
-        final duration = refreshTime.difference(now);
-        _tokenTimer = Timer(duration, () {
-          add(AuthTokenRefreshRequested());
-        });
+      if (refreshTime.isNegative) {
+        // Token expire dans moins de 5 minutes, vérifier immédiatement
+        add(AuthTokenRefreshRequested());
+        return;
       }
-    } catch (e) {
-      // En cas d'erreur de décodage, programmer un rafraîchissement dans 1 heure
-      _tokenTimer = Timer(const Duration(hours: 1), () {
+      
+      _tokenTimer = Timer(refreshTime, () {
         add(AuthTokenRefreshRequested());
       });
+    } catch (e) {
+      // Erreur lors de l'analyse du token, forcer la vérification
+      add(AuthTokenRefreshRequested());
     }
   }
 
@@ -256,20 +287,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   String _getErrorMessage(dynamic error) {
+    // ✅ CORRIGÉ: AuthException maintenant correctement importé
     if (error is AuthException) {
       return error.message;
-    } else if (error.toString().contains('network')) {
-      return 'Erreur de connexion. Vérifiez votre internet.';
-    } else if (error.toString().contains('401')) {
-      return 'Email ou mot de passe incorrect.';
-    } else if (error.toString().contains('403')) {
-      return 'Accès refusé. Votre compte peut être suspendu.';
-    } else if (error.toString().contains('409')) {
-      return 'Un compte avec cet email existe déjà.';
-    } else if (error.toString().contains('network')) {
-      return 'Erreur de connexion. Vérifiez votre internet.';
-    } else {
-      return 'Une erreur s\'est produite. Veuillez réessayer.';
     }
+    return error.toString();
   }
 }
