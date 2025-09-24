@@ -1,3 +1,4 @@
+// Path: starlane_mobile/starlane_client/lib/features/client/repositories/activity_repository.dart
 import 'package:dio/dio.dart';
 import '../../../data/api/api_client.dart';
 import '../../../data/models/activity.dart';
@@ -38,7 +39,16 @@ class ActivityRepositoryImpl implements ActivityRepository {
       );
       
       if (response.success && response.data != null) {
-        return response.data!;
+        // ✅ CORRECTION: Votre backend renvoie une structure avec pagination
+        // Il faut extraire les activités de data.activities
+        final responseData = response.data as Map<String, dynamic>?;
+        if (responseData != null && responseData['activities'] != null) {
+          final activitiesList = responseData['activities'] as List;
+          return activitiesList
+              .map((json) => Activity.fromJson(json as Map<String, dynamic>))
+              .toList();
+        }
+        return [];
       } else {
         throw ApiException(
           message: response.message,
@@ -48,6 +58,7 @@ class ActivityRepositoryImpl implements ActivityRepository {
     } on DioException catch (e) {
       throw _handleDioException(e);
     } catch (e) {
+      print('🔍 ERREUR getActivities: $e');
       throw ApiException(message: 'Erreur lors de la récupération des activités');
     }
   }
@@ -58,6 +69,7 @@ class ActivityRepositoryImpl implements ActivityRepository {
       final response = await _apiClient.getFeaturedActivities();
       
       if (response.success && response.data != null) {
+        // Pour les featured, votre backend renvoie directement la liste
         return response.data!;
       } else {
         throw ApiException(
@@ -98,32 +110,45 @@ class ActivityRepositoryImpl implements ActivityRepository {
           message: 'Timeout de connexion. Vérifiez votre connexion internet.',
           statusCode: e.response?.statusCode,
         );
+      
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode;
         final data = e.response?.data;
         
-        String message = 'Une erreur est survenue';
+        String message = 'Erreur serveur';
         List<String>? errors;
         
         if (data is Map<String, dynamic>) {
           message = data['message'] ?? message;
-          if (data['errors'] is List) {
-            errors = List<String>.from(data['errors']);
-          }
+          errors = (data['errors'] as List?)?.cast<String>();
         }
         
+        switch (statusCode) {
+          case 400:
+            return ApiException(message: 'Requête invalide: $message', errors: errors);
+          case 401:
+            return ApiException(message: 'Non autorisé. Veuillez vous reconnecter.');
+          case 403:
+            return ApiException(message: 'Accès refusé.');
+          case 404:
+            return ApiException(message: 'Ressource non trouvée.');
+          case 500:
+            return ApiException(message: 'Erreur serveur. Veuillez réessayer.');
+          default:
+            return ApiException(message: 'Erreur $statusCode: $message');
+        }
+      
+      case DioExceptionType.connectionError:
         return ApiException(
-          message: message,
-          statusCode: statusCode,
-          errors: errors,
+          message: 'Impossible de se connecter au serveur. Vérifiez votre connexion.',
         );
+      
       case DioExceptionType.cancel:
         return ApiException(message: 'Requête annulée');
+      
+      case DioExceptionType.unknown:
       default:
-        return ApiException(
-          message: 'Erreur de connexion. Vérifiez votre connexion internet.',
-          statusCode: e.response?.statusCode,
-        );
+        return ApiException(message: 'Erreur de connexion inconnue');
     }
   }
 }

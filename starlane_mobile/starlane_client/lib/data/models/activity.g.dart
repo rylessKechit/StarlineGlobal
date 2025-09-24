@@ -10,50 +10,43 @@ Activity _$ActivityFromJson(Map<String, dynamic> json) => Activity(
       id: json['_id'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
-      category: $enumDecode(_$ActivityCategoryEnumMap, json['category']),
-      status: $enumDecode(_$ActivityStatusEnumMap, json['status']),
-      price: (json['price'] as num).toDouble(),
-      currency: json['currency'] as String? ?? 'EUR',
-      location: json['location'] as String,
-      city: json['city'] as String,
-      country: json['country'] as String,
-      providerId: json['providerId'] as String,
+      shortDescription: json['shortDescription'] as String?,
+      category: json['category'] as String,
+      subCategory: json['subCategory'] as String?,
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              const [],
+      provider: json['providerId'] == null
+          ? null
+          : ActivityProvider.fromJson(
+              json['providerId'] as Map<String, dynamic>),
       providerName: json['providerName'] as String,
-      providerAvatar: json['providerAvatar'] as String?,
+      companyName: json['companyName'] as String?,
+      location:
+          ActivityLocation.fromJson(json['location'] as Map<String, dynamic>),
+      pricing:
+          ActivityPricing.fromJson(json['pricing'] as Map<String, dynamic>),
+      capacity: json['capacity'] == null
+          ? null
+          : ActivityCapacity.fromJson(json['capacity'] as Map<String, dynamic>),
+      availability: json['availability'] == null
+          ? null
+          : ActivityAvailability.fromJson(
+              json['availability'] as Map<String, dynamic>),
       images: (json['images'] as List<dynamic>?)
-              ?.map((e) => e as String)
+              ?.map((e) => ActivityImage.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
-      videoUrl: json['videoUrl'] as String?,
       features: (json['features'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           const [],
-      included: (json['included'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      requirements: (json['requirements'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      maxGuests: (json['maxGuests'] as num?)?.toInt() ?? 1,
-      duration: (json['duration'] as num?)?.toInt() ?? 60,
-      instantBooking: json['instantBooking'] as bool? ?? false,
-      availableDates: (json['availableDates'] as List<dynamic>?)
-              ?.map((e) => DateTime.parse(e as String))
-              .toList() ??
-          const [],
-      timeSlots: (json['timeSlots'] as List<dynamic>?)
-              ?.map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-      totalBookings: (json['totalBookings'] as num?)?.toInt() ?? 0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      reviewsCount: (json['reviewsCount'] as num?)?.toInt() ?? 0,
-      lastBooking: json['lastBooking'] == null
+      featured: json['featured'] as bool? ?? false,
+      priority: (json['priority'] as num?)?.toInt() ?? 0,
+      status: json['status'] as String,
+      stats: json['stats'] == null
           ? null
-          : DateTime.parse(json['lastBooking'] as String),
+          : ActivityStats.fromJson(json['stats'] as Map<String, dynamic>),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -62,183 +55,165 @@ Map<String, dynamic> _$ActivityToJson(Activity instance) => <String, dynamic>{
       '_id': instance.id,
       'title': instance.title,
       'description': instance.description,
-      'category': _$ActivityCategoryEnumMap[instance.category]!,
-      'status': _$ActivityStatusEnumMap[instance.status]!,
-      'price': instance.price,
-      'currency': instance.currency,
-      'location': instance.location,
-      'city': instance.city,
-      'country': instance.country,
-      'providerId': instance.providerId,
+      'shortDescription': instance.shortDescription,
+      'category': instance.category,
+      'subCategory': instance.subCategory,
+      'tags': instance.tags,
+      'providerId': instance.provider,
       'providerName': instance.providerName,
-      'providerAvatar': instance.providerAvatar,
+      'companyName': instance.companyName,
+      'location': instance.location,
+      'pricing': instance.pricing,
+      'capacity': instance.capacity,
+      'availability': instance.availability,
       'images': instance.images,
-      'videoUrl': instance.videoUrl,
       'features': instance.features,
-      'included': instance.included,
-      'requirements': instance.requirements,
-      'maxGuests': instance.maxGuests,
-      'duration': instance.duration,
-      'instantBooking': instance.instantBooking,
-      'availableDates':
-          instance.availableDates.map((e) => e.toIso8601String()).toList(),
-      'timeSlots': instance.timeSlots,
-      'totalBookings': instance.totalBookings,
-      'rating': instance.rating,
-      'reviewsCount': instance.reviewsCount,
-      'lastBooking': instance.lastBooking?.toIso8601String(),
+      'featured': instance.featured,
+      'priority': instance.priority,
+      'status': instance.status,
+      'stats': instance.stats,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
     };
 
-const _$ActivityCategoryEnumMap = {
-  ActivityCategory.realEstate: 'real-estate',
-  ActivityCategory.airTravel: 'air-travel',
-  ActivityCategory.transport: 'transport',
-  ActivityCategory.corporate: 'corporate',
-  ActivityCategory.lifestyle: 'lifestyle',
-  ActivityCategory.events: 'events',
-  ActivityCategory.security: 'security',
-};
-
-const _$ActivityStatusEnumMap = {
-  ActivityStatus.active: 'active',
-  ActivityStatus.paused: 'paused',
-  ActivityStatus.draft: 'draft',
-  ActivityStatus.archived: 'archived',
-};
-
-TimeSlot _$TimeSlotFromJson(Map<String, dynamic> json) => TimeSlot(
-      startTime: json['startTime'] as String,
-      endTime: json['endTime'] as String,
-      isAvailable: json['isAvailable'] as bool? ?? true,
+ActivityProvider _$ActivityProviderFromJson(Map<String, dynamic> json) =>
+    ActivityProvider(
+      id: json['_id'] as String,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      companyName: json['companyName'] as String?,
+      rating: (json['rating'] as num?)?.toDouble(),
     );
 
-Map<String, dynamic> _$TimeSlotToJson(TimeSlot instance) => <String, dynamic>{
-      'startTime': instance.startTime,
-      'endTime': instance.endTime,
-      'isAvailable': instance.isAvailable,
+Map<String, dynamic> _$ActivityProviderToJson(ActivityProvider instance) =>
+    <String, dynamic>{
+      '_id': instance.id,
+      'name': instance.name,
+      'email': instance.email,
+      'companyName': instance.companyName,
+      'rating': instance.rating,
     };
 
-CreateActivityRequest _$CreateActivityRequestFromJson(
-        Map<String, dynamic> json) =>
-    CreateActivityRequest(
-      title: json['title'] as String,
-      description: json['description'] as String,
-      category: json['category'] as String,
-      price: (json['price'] as num).toDouble(),
-      currency: json['currency'] as String? ?? 'EUR',
-      location: json['location'] as String,
+ActivityLocation _$ActivityLocationFromJson(Map<String, dynamic> json) =>
+    ActivityLocation(
       city: json['city'] as String,
       country: json['country'] as String,
-      images: (json['images'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      videoUrl: json['videoUrl'] as String?,
-      features: (json['features'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      included: (json['included'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      requirements: (json['requirements'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      maxGuests: (json['maxGuests'] as num?)?.toInt() ?? 1,
-      duration: (json['duration'] as num?)?.toInt() ?? 60,
-      instantBooking: json['instantBooking'] as bool? ?? false,
-      availableDates: (json['availableDates'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      timeSlots: (json['timeSlots'] as List<dynamic>?)
-              ?.map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
+      address: json['address'] as String?,
+      coordinates: json['coordinates'] == null
+          ? null
+          : ActivityCoordinates.fromJson(
+              json['coordinates'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$CreateActivityRequestToJson(
-        CreateActivityRequest instance) =>
+Map<String, dynamic> _$ActivityLocationToJson(ActivityLocation instance) =>
     <String, dynamic>{
-      'title': instance.title,
-      'description': instance.description,
-      'category': instance.category,
-      'price': instance.price,
-      'currency': instance.currency,
-      'location': instance.location,
       'city': instance.city,
       'country': instance.country,
-      'images': instance.images,
-      'videoUrl': instance.videoUrl,
-      'features': instance.features,
-      'included': instance.included,
-      'requirements': instance.requirements,
-      'maxGuests': instance.maxGuests,
-      'duration': instance.duration,
-      'instantBooking': instance.instantBooking,
-      'availableDates': instance.availableDates,
-      'timeSlots': instance.timeSlots,
+      'address': instance.address,
+      'coordinates': instance.coordinates,
     };
 
-UpdateActivityRequest _$UpdateActivityRequestFromJson(
-        Map<String, dynamic> json) =>
-    UpdateActivityRequest(
-      title: json['title'] as String?,
-      description: json['description'] as String?,
-      category: json['category'] as String?,
-      price: (json['price'] as num?)?.toDouble(),
-      currency: json['currency'] as String?,
-      location: json['location'] as String?,
-      city: json['city'] as String?,
-      country: json['country'] as String?,
-      images:
-          (json['images'] as List<dynamic>?)?.map((e) => e as String).toList(),
-      videoUrl: json['videoUrl'] as String?,
-      features: (json['features'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-      included: (json['included'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-      requirements: (json['requirements'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-      maxGuests: (json['maxGuests'] as num?)?.toInt(),
-      duration: (json['duration'] as num?)?.toInt(),
-      instantBooking: json['instantBooking'] as bool?,
-      status: json['status'] as String?,
-      availableDates: (json['availableDates'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-      timeSlots: (json['timeSlots'] as List<dynamic>?)
-          ?.map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
-          .toList(),
+ActivityCoordinates _$ActivityCoordinatesFromJson(Map<String, dynamic> json) =>
+    ActivityCoordinates(
+      lat: (json['lat'] as num).toDouble(),
+      lng: (json['lng'] as num).toDouble(),
     );
 
-Map<String, dynamic> _$UpdateActivityRequestToJson(
-        UpdateActivityRequest instance) =>
+Map<String, dynamic> _$ActivityCoordinatesToJson(
+        ActivityCoordinates instance) =>
     <String, dynamic>{
-      'title': instance.title,
-      'description': instance.description,
-      'category': instance.category,
-      'price': instance.price,
+      'lat': instance.lat,
+      'lng': instance.lng,
+    };
+
+ActivityPricing _$ActivityPricingFromJson(Map<String, dynamic> json) =>
+    ActivityPricing(
+      basePrice: (json['basePrice'] as num).toDouble(),
+      currency: json['currency'] as String? ?? 'EUR',
+      priceType: json['priceType'] as String? ?? 'fixed',
+    );
+
+Map<String, dynamic> _$ActivityPricingToJson(ActivityPricing instance) =>
+    <String, dynamic>{
+      'basePrice': instance.basePrice,
       'currency': instance.currency,
-      'location': instance.location,
-      'city': instance.city,
-      'country': instance.country,
-      'images': instance.images,
-      'videoUrl': instance.videoUrl,
-      'features': instance.features,
-      'included': instance.included,
-      'requirements': instance.requirements,
-      'maxGuests': instance.maxGuests,
-      'duration': instance.duration,
-      'instantBooking': instance.instantBooking,
-      'status': instance.status,
-      'availableDates': instance.availableDates,
-      'timeSlots': instance.timeSlots,
+      'priceType': instance.priceType,
+    };
+
+ActivityCapacity _$ActivityCapacityFromJson(Map<String, dynamic> json) =>
+    ActivityCapacity(
+      min: (json['min'] as num?)?.toInt(),
+      max: (json['max'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$ActivityCapacityToJson(ActivityCapacity instance) =>
+    <String, dynamic>{
+      'min': instance.min,
+      'max': instance.max,
+    };
+
+ActivityAvailability _$ActivityAvailabilityFromJson(
+        Map<String, dynamic> json) =>
+    ActivityAvailability(
+      isActive: json['isActive'] as bool,
+    );
+
+Map<String, dynamic> _$ActivityAvailabilityToJson(
+        ActivityAvailability instance) =>
+    <String, dynamic>{
+      'isActive': instance.isActive,
+    };
+
+ActivityImage _$ActivityImageFromJson(Map<String, dynamic> json) =>
+    ActivityImage(
+      url: json['url'] as String,
+      alt: json['alt'] as String?,
+      isPrimary: json['isPrimary'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$ActivityImageToJson(ActivityImage instance) =>
+    <String, dynamic>{
+      'url': instance.url,
+      'alt': instance.alt,
+      'isPrimary': instance.isPrimary,
+    };
+
+ActivityStats _$ActivityStatsFromJson(Map<String, dynamic> json) =>
+    ActivityStats(
+      views: (json['views'] as num?)?.toInt() ?? 0,
+      rating: json['rating'] == null
+          ? null
+          : ActivityRating.fromJson(json['rating'] as Map<String, dynamic>),
+      bookings: json['bookings'] == null
+          ? null
+          : ActivityBookings.fromJson(json['bookings'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$ActivityStatsToJson(ActivityStats instance) =>
+    <String, dynamic>{
+      'views': instance.views,
+      'rating': instance.rating,
+      'bookings': instance.bookings,
+    };
+
+ActivityRating _$ActivityRatingFromJson(Map<String, dynamic> json) =>
+    ActivityRating(
+      average: (json['average'] as num).toDouble(),
+      count: (json['count'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$ActivityRatingToJson(ActivityRating instance) =>
+    <String, dynamic>{
+      'average': instance.average,
+      'count': instance.count,
+    };
+
+ActivityBookings _$ActivityBookingsFromJson(Map<String, dynamic> json) =>
+    ActivityBookings(
+      total: (json['total'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$ActivityBookingsToJson(ActivityBookings instance) =>
+    <String, dynamic>{
+      'total': instance.total,
     };

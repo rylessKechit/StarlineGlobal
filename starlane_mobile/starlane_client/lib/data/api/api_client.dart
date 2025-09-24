@@ -130,9 +130,9 @@ abstract class StarlaneApiClient {
     @Body() UpdateUserRequest request,
   );
 
-  // ========== ACTIVITY ENDPOINTS ==========
+  // ========== ACTIVITY ENDPOINTS (MODIFIÉ) ==========
   @GET('/activities')
-  Future<ApiResponse<List<Activity>>> getActivities({
+  Future<ApiResponse<dynamic>> getActivities({  // ✅ Changé en dynamic
     @Query('page') int page = 1,
     @Query('limit') int limit = 20,
     @Query('category') String? category,
@@ -146,20 +146,6 @@ abstract class StarlaneApiClient {
 
   @GET('/activities/{id}')
   Future<ApiResponse<Activity>> getActivityById(@Path('id') String id);
-
-  @POST('/activities')
-  Future<ApiResponse<Activity>> createActivity(
-    @Body() CreateActivityRequest request,
-  );
-
-  @PUT('/activities/{id}')
-  Future<ApiResponse<Activity>> updateActivity(
-    @Path('id') String id,
-    @Body() UpdateActivityRequest request,
-  );
-
-  @DELETE('/activities/{id}')
-  Future<ApiResponse<String>> deleteActivity(@Path('id') String id);
 
   // ========== BOOKING ENDPOINTS ==========
   @GET('/bookings')
