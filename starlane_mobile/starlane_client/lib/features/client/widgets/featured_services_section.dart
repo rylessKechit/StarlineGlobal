@@ -132,7 +132,7 @@ class FeaturedServicesSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.miscellaneous_services_outlined,
+              Icons.diamond_outlined,
               size: 48.sp,
               color: StarlaneColors.textSecondary,
             ),
@@ -428,7 +428,7 @@ class FeaturedServicesSection extends StatelessWidget {
       case 'security':
         return Icons.security_outlined;
       default:
-        return Icons.miscellaneous_services_outlined;
+        return Icons.diamond_outlined;
     }
   }
 

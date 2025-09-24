@@ -153,7 +153,7 @@ class HomeHeaderSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16.r),
                         ),
                         child: Icon(
-                          Icons.star_rounded,
+                          Icons.diamond_outlined,
                           color: StarlaneColors.gold400,
                           size: 32.sp,
                         ),

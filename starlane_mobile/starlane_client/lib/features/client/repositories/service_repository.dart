@@ -31,8 +31,6 @@ class ServiceRepositoryImpl implements ServiceRepository {
     String? sortBy,
   }) async {
     try {
-      print('🔍 DEBUG getServices: Appel API avec page=$page, limit=$limit');
-      
       final response = await _serviceApiClient.getServices(
         page: page,
         limit: limit,
@@ -40,12 +38,8 @@ class ServiceRepositoryImpl implements ServiceRepository {
         featured: null,
       );
       
-      print('🔍 DEBUG getServices: Response success=${response.success}');
-      print('🔍 DEBUG getServices: Response data type=${response.data.runtimeType}');
-      
       if (response.success && response.data != null) {
         var services = response.data!;
-        print('🔍 DEBUG getServices: ${services.length} services récupérés');
         
         // Filtrage côté client pour search (temporaire)
         if (search != null && search.isNotEmpty) {
@@ -54,7 +48,6 @@ class ServiceRepositoryImpl implements ServiceRepository {
                    service.description.toLowerCase().contains(search.toLowerCase()) ||
                    (service.shortDescription?.toLowerCase().contains(search.toLowerCase()) ?? false);
           }).toList();
-          print('🔍 DEBUG getServices: ${services.length} services après filtrage search');
         }
         
         // Tri côté client (temporaire)
@@ -70,24 +63,18 @@ class ServiceRepositoryImpl implements ServiceRepository {
               services.sort((a, b) => b.createdAt.compareTo(a.createdAt));
               break;
           }
-          print('🔍 DEBUG getServices: Services triés par $sortBy');
         }
         
         return services;
       } else {
-        print('🔍 DEBUG getServices: Response non successful: ${response.message}');
         throw ApiException(
           message: response.message,
           errors: response.errors,
         );
       }
     } on DioException catch (e) {
-      print('🔍 DEBUG getServices: DioException ${e.type}: ${e.message}');
       throw _handleDioException(e);
     } catch (e) {
-      print('🔍 ERREUR getServices: $e');
-      // CHANGEMENT: Au lieu de lancer une exception, retournons une liste vide et logons l'erreur
-      print('🔍 FALLBACK: Retour d\'une liste vide au lieu d\'exception');
       return <Service>[];
     }
   }
@@ -95,29 +82,19 @@ class ServiceRepositoryImpl implements ServiceRepository {
   @override
   Future<List<Service>> getFeaturedServices() async {
     try {
-      print('🔍 DEBUG getFeaturedServices: Début appel API');
-      
       final response = await _serviceApiClient.getFeaturedServices();
       
-      print('🔍 DEBUG getFeaturedServices: Response success=${response.success}');
-      
       if (response.success && response.data != null) {
-        print('🔍 DEBUG getFeaturedServices: ${response.data!.length} services featured');
         return response.data!;
       } else {
-        print('🔍 DEBUG getFeaturedServices: Response non successful: ${response.message}');
         throw ApiException(
           message: response.message,
           errors: response.errors,
         );
       }
     } on DioException catch (e) {
-      print('🔍 DEBUG getFeaturedServices: DioException ${e.type}: ${e.message}');
       throw _handleDioException(e);
     } catch (e) {
-      print('🔍 ERREUR getFeaturedServices: $e');
-      // CHANGEMENT: Au lieu de lancer une exception, retournons une liste vide
-      print('🔍 FALLBACK: Retour d\'une liste vide au lieu d\'exception');
       return <Service>[];
     }
   }
@@ -125,8 +102,6 @@ class ServiceRepositoryImpl implements ServiceRepository {
   @override
   Future<Service> getServiceById(String id) async {
     try {
-      print('🔍 DEBUG getServiceById: Appel API pour service $id');
-      
       final response = await _serviceApiClient.getServiceById(id);
       
       if (response.success && response.data != null) {
@@ -135,17 +110,14 @@ class ServiceRepositoryImpl implements ServiceRepository {
         throw ApiException(message: response.message);
       }
     } on DioException catch (e) {
-      print('🔍 DEBUG getServiceById: DioException ${e.type}: ${e.message}');
       throw _handleDioException(e);
     } catch (e) {
-      print('🔍 ERREUR getServiceById: $e');
       throw ApiException(message: 'Erreur lors de la récupération du service');
     }
   }
 
   // Helper pour gérer les erreurs Dio
   ApiException _handleDioException(DioException e) {
-    print('🔍 DioException: ${e.type} - ${e.message}');
     
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
