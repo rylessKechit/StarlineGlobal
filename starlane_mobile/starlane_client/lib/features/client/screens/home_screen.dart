@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Core imports
 import '../../../core/theme/starlane_colors.dart';
@@ -9,6 +10,11 @@ import '../widgets/home_header_section.dart';
 import '../widgets/search_section.dart';
 import '../widgets/categories_grid_section.dart';
 import '../widgets/featured_services_section.dart';
+
+// Bloc
+import '../bloc/activity_bloc.dart';
+import '../repositories/activity_repository.dart';
+import '../../../data/api/api_client.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -45,43 +51,84 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   }
 
   void _onSearchChanged(String query) {
-    // TODO: Implémenter la recherche
+    // TODO: Implémenter la recherche avec le bloc
+    if (query.isNotEmpty) {
+      context.read<ActivityBloc>().add(
+        ActivitySearchRequested(query: query),
+      );
+    }
     print('Recherche: $query');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: StarlaneColors.gray50,
-      body: SingleChildScrollView(
-        child: Column(
+    return BlocProvider<ActivityBloc>(
+      create: (context) => ActivityBloc(
+        activityRepository: ActivityRepositoryImpl(
+          apiClient: StarlaneApiClient(DioClient().dio),
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: StarlaneColors.gray50,
+        body: Column(
           children: [
-            // Header avec bonjour + avatar
+            // ✅ HEADER FIXE (ne scroll pas)
             const HomeHeaderSection(),
-            
-            SizedBox(height: 16.h),
-            
-            // Barre de recherche
-            SearchSection(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
+
+            // ✅ BARRE DE RECHERCHE AVEC CONTAINER ET OMBRE
+            Container(
+              decoration: BoxDecoration(
+                color: StarlaneColors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: StarlaneColors.black.withOpacity(0.08),
+                    blurRadius: 8.r,
+                    offset: Offset(0, 2.h),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  SizedBox(height: 16.h),
+                  SearchSection(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                  ),
+                  SizedBox(height: 16.h),
+                ],
+              ),
             ),
             
-            SizedBox(height: 16.h),
-            
-            // Grille des catégories 2x2
-            CategoriesGridSection(
-              onCategoryTap: _onCategoryTap,
+            // ✅ CONTENU SCROLLABLE
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  context.read<ActivityBloc>()
+                      .add(ActivityFeaturedLoadRequested());
+                },
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      SizedBox(height: 8.h),
+                      
+                      // Grille des catégories 2x2
+                      CategoriesGridSection(
+                        onCategoryTap: _onCategoryTap,
+                      ),
+                      
+                      SizedBox(height: 6.h),
+                      
+                      // Services phares - AVEC VRAIES DONNÉES
+                      FeaturedServicesSection(
+                        onServiceTap: _onServiceTap,
+                      ),
+                      
+                      SizedBox(height: 20.h),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            
-            SizedBox(height: 12.h),
-            
-            // Services phares
-            FeaturedServicesSection(
-              onServiceTap: _onServiceTap,
-            ),
-            
-            SizedBox(height: 20.h),
           ],
         ),
       ),

@@ -12,6 +12,7 @@ const authRoutes = require('./src/routes/auth');
 const userRoutes = require('./src/routes/users');
 const activityRoutes = require('./src/routes/activities');
 const bookingRoutes = require('./src/routes/bookings');
+const serviceRoutes = require('./src/routes/services');
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -80,6 +81,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/services', serviceRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -12,7 +12,10 @@
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "seed": "node scripts/seedDatabase.js",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node scripts/migrate.js",
+    "seed:activities": "NODE_ENV=development node scripts/seed-activities.js",
+    "seed:activities-clean": "node scripts/seed-activities.js --clean",
+    "seed:services": "node scripts/seed-services.js"
   },
   "keywords": [
     "luxury",

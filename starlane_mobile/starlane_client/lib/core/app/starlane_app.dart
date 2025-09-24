@@ -9,6 +9,7 @@ import '../router/app_router.dart';
 import '../../data/api/api_client.dart';
 import '../../features/auth/repositories/auth_repository.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
+import '../../features/client/repositories/activity_repository.dart';
 
 class StarlaneApp extends StatelessWidget {
   const StarlaneApp({super.key});
@@ -20,12 +21,17 @@ class StarlaneApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
+        // ✅ CRÉATION DU CLIENT API PARTAGÉ
+        final apiClient = StarlaneApiClient(DioClient().dio);
+        
         return MultiRepositoryProvider(
           providers: [
             RepositoryProvider<AuthRepository>(
-              create: (context) => AuthRepositoryImpl(
-                apiClient: StarlaneApiClient(DioClient().dio),
-              ),
+              create: (context) => AuthRepositoryImpl(apiClient: apiClient),
+            ),
+            // ✅ AJOUT DU ACTIVITY REPOSITORY
+            RepositoryProvider<ActivityRepository>(
+              create: (context) => ActivityRepositoryImpl(apiClient: apiClient),
             ),
           ],
           child: BlocProvider(

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/starlane_colors.dart';
 import '../../../shared/widgets/starlane_widgets.dart';
+import '../../../data/models/activity.dart';
+import '../bloc/activity_bloc.dart';
 
 class FeaturedServicesSection extends StatelessWidget {
   final Function(String serviceId) onServiceTap;
@@ -14,75 +17,10 @@ class FeaturedServicesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final services = [
-      {
-        'id': 'meet-greet',
-        'title': 'Meet & Greet',
-        'category': 'Air Travel',
-        'description': 'Service d\'accueil VIP à l\'aéroport',
-        'price': '250€',
-        'icon': Icons.flight,
-        'color': StarlaneColors.navy500,
-      },
-      {
-        'id': 'jet-reservation',
-        'title': 'Réservation de Jet',
-        'category': 'Air Travel',
-        'description': 'Location de jets privés sur mesure',
-        'price': 'Sur devis',
-        'icon': Icons.flight_takeoff,
-        'color': StarlaneColors.navy500,
-      },
-      {
-        'id': 'mise-disposition',
-        'title': 'Mise à Disposition',
-        'category': 'Transport',
-        'description': 'Véhicule avec chauffeur à disposition',
-        'price': '150€/h',
-        'icon': Icons.directions_car,
-        'color': StarlaneColors.emerald500,
-      },
-      {
-        'id': 'chauffeur-vip',
-        'title': 'Chauffeur VIP',
-        'category': 'Transport',
-        'description': 'Service de chauffeur personnel',
-        'price': '80€/h',
-        'icon': Icons.person_pin_circle,
-        'color': StarlaneColors.emerald500,
-      },
-      {
-        'id': 'recherche-bien-louer',
-        'title': 'Recherche de Bien à Louer',
-        'category': 'Real Estate',
-        'description': 'Recherche personnalisée de biens',
-        'price': '500€',
-        'icon': Icons.home_outlined,
-        'color': StarlaneColors.gold500,
-      },
-      {
-        'id': 'recherche-bien-acheter',
-        'title': 'Recherche de Bien à Acheter',
-        'category': 'Real Estate',
-        'description': 'Accompagnement achat immobilier',
-        'price': '1000€',
-        'icon': Icons.home,
-        'color': StarlaneColors.gold500,
-      },
-      {
-        'id': 'events-corporate',
-        'title': 'Events Corporate',
-        'category': 'Corporate',
-        'description': 'Organisation d\'événements d\'entreprise',
-        'price': 'Sur devis',
-        'icon': Icons.business,
-        'color': StarlaneColors.purple500,
-      },
-    ];
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -123,18 +61,82 @@ class FeaturedServicesSection extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 8.h),
           
-          // Liste des services
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: services.length,
-            itemBuilder: (context, index) {
-              final service = services[index];
+          // BlocBuilder pour les vraies données
+          BlocBuilder<ActivityBloc, ActivityState>(
+            builder: (context, state) {
+              if (state is ActivityLoading) {
+                return Container(
+                  height: 200.h,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        StarlaneColors.gold500,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              
+              if (state is ActivityError) {
+                return Container(
+                  height: 100.h,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: StarlaneColors.red500,
+                          size: 32.sp,
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          'Erreur lors du chargement',
+                          style: TextStyle(
+                            color: StarlaneColors.red500,
+                            fontSize: 12.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              
+              if (state is ActivityFeaturedLoaded) {
+                final featuredActivities = state.activities;
+                
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  itemCount: featuredActivities.length,
+                  itemBuilder: (context, index) {
+                    final activity = featuredActivities[index];
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 6.h),
+                      child: _buildServiceCard(activity),
+                    );
+                  },
+                );
+              }
+              
+              // État par défaut - charge les données
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<ActivityBloc>()
+                    .add(ActivityFeaturedLoadRequested());
+              });
+              
               return Container(
-                margin: EdgeInsets.only(bottom: 8.h),
-                child: _buildServiceCard(service),
+                height: 200.h,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      StarlaneColors.gold500,
+                    ),
+                  ),
+                ),
               );
             },
           ),
@@ -143,9 +145,55 @@ class FeaturedServicesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceCard(Map<String, dynamic> service) {
+  Widget _buildServiceCard(Activity activity) {
+    // Icône selon la catégorie
+    IconData getIconForCategory(ActivityCategory category) {
+      switch (category) {
+        case ActivityCategory.airTravel:
+          return Icons.flight;
+        case ActivityCategory.transport:
+          return Icons.directions_car;
+        case ActivityCategory.realEstate:
+          return Icons.home;
+        case ActivityCategory.corporate:
+          return Icons.business;
+        case ActivityCategory.lifestyle:
+          return Icons.spa;
+        case ActivityCategory.events:
+          return Icons.event;
+        default:
+          return Icons.star;
+      }
+    }
+
+    // Couleur selon la catégorie
+    Color getColorForCategory(ActivityCategory category) {
+      switch (category) {
+        case ActivityCategory.airTravel:
+          return StarlaneColors.navy500;
+        case ActivityCategory.transport:
+          return StarlaneColors.emerald500;
+        case ActivityCategory.realEstate:
+          return StarlaneColors.gold500;
+        case ActivityCategory.corporate:
+          return StarlaneColors.purple500;
+        case ActivityCategory.lifestyle:
+          return StarlaneColors.pink500;
+        case ActivityCategory.events:
+          return StarlaneColors.blue500;
+        default:
+          return StarlaneColors.gray500;
+      }
+    }
+
+    // Formater le prix - VERSION SIMPLIFIÉE
+    String formatPrice() {
+      // Prix simple par défaut
+      return '${activity.price.toInt()}€';
+    }
+
     return StarlaneCard(
-      onTap: () => onServiceTap(service['id']),
+      onTap: () => onServiceTap(activity.id),
       padding: EdgeInsets.all(12.w),
       child: Row(
         children: [
@@ -154,12 +202,12 @@ class FeaturedServicesSection extends StatelessWidget {
             width: 45.w,
             height: 45.w,
             decoration: BoxDecoration(
-              color: (service['color'] as Color).withOpacity(0.1),
+              color: getColorForCategory(activity.category).withOpacity(0.1),
               borderRadius: BorderRadius.circular(10.r),
             ),
             child: Icon(
-              service['icon'] as IconData,
-              color: service['color'] as Color,
+              getIconForCategory(activity.category),
+              color: getColorForCategory(activity.category),
               size: 22.sp,
             ),
           ),
@@ -175,7 +223,7 @@ class FeaturedServicesSection extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        service['title'],
+                        activity.title,
                         style: TextStyle(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.bold,
@@ -184,7 +232,7 @@ class FeaturedServicesSection extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      service['price'],
+                      formatPrice(),
                       style: TextStyle(
                         fontSize: 13.sp,
                         fontWeight: FontWeight.w600,
@@ -195,16 +243,16 @@ class FeaturedServicesSection extends StatelessWidget {
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  service['category'],
+                  activity.category.displayName,
                   style: TextStyle(
                     fontSize: 11.sp,
-                    color: service['color'] as Color,
+                    color: getColorForCategory(activity.category),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  service['description'],
+                  activity.description,
                   style: TextStyle(
                     fontSize: 11.sp,
                     color: StarlaneColors.gray600,

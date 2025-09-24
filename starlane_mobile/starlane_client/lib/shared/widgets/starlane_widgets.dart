@@ -433,7 +433,7 @@ class LoadingOverlay extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: StarlaneColors.white,
                   borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: StarlaneColors.luxuryShadow,
+                  boxShadow: const [...StarlaneColors.luxuryShadow],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

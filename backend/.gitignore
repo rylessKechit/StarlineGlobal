@@ -79,3 +79,5 @@ coverage/
 
 # PM2 files
 ecosystem.config.js
+
+scripts/

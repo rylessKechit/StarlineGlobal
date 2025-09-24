@@ -48,6 +48,7 @@ class CategoriesGridSection extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // ✅ AJOUTÉ pour minimiser l'espace
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -66,12 +67,14 @@ class CategoriesGridSection extends StatelessWidget {
               color: StarlaneColors.gray600,
             ),
           ),
-          SizedBox(height: 6.h),
+
+          SizedBox(height: 16.h),
           
-          // Grille 2x2
+          // ✅ GRILLE 2x2 SANS PADDING INTERNE
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero, // ✅ SUPPRIME TOUT PADDING INTERNE !
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 12.w,

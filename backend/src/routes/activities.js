@@ -352,6 +352,37 @@ router.get('/provider/:providerId',
   getProviderActivities
 );
 
+// @route   GET /api/activities/featured
+// @desc    Get featured activities
+// @access  Public
+router.get('/featured', 
+  async (req, res) => {
+    try {
+      const featuredActivities = await Activity.find({ 
+        featured: true, 
+        status: 'active' 
+      })
+        .populate('providerId', 'name email companyName')
+        .sort({ priority: -1, createdAt: -1 })
+        .limit(10)
+        .lean();
+
+      res.status(200).json({
+        success: true,
+        data: featuredActivities,
+        message: 'Featured activities retrieved successfully'
+      });
+
+    } catch (error) {
+      console.error('Get featured activities error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Server error while fetching featured activities'
+      });
+    }
+  }
+);
+
 // @route   GET /api/activities/:id
 // @desc    Get single activity by ID
 // @access  Public/Private

@@ -106,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen>
                         decoration: const BoxDecoration(
                           color: StarlaneColors.white,
                           shape: BoxShape.circle,
-                          boxShadow: StarlaneColors.luxuryShadow,
+                          boxShadow: const [...StarlaneColors.luxuryShadow],
                         ),
                         child: Icon(
                           Icons.diamond_rounded,
