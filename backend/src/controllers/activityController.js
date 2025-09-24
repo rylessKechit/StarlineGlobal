@@ -127,46 +127,33 @@ const createActivity = async (req, res) => {
   }
 };
 
-// Get all activities with filtering and pagination
+// Get all activities with filtering and pagination - CORRECTED VERSION
 const getActivities = async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 20,
       category,
-      status,
-      providerId,
-      city,
-      country,
-      minPrice,
-      maxPrice,
-      featured,
       search,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      city,
+      minPrice,
+      maxPrice
     } = req.query;
 
     // Build query
-    const query = {};
+    let query = { status: 'active' };
 
-    // Status filter - default to active for non-admin users
-    if (req.user.role === 'admin') {
-      if (status) query.status = status;
-    } else if (req.user.role === 'prestataire') {
-      // Providers can see their own activities in any status
-      query.providerId = req.user._id;
-      if (status) query.status = status;
-    } else {
-      // Clients can only see active activities
-      query.status = 'active';
+    // Category filter
+    if (category) {
+      query.category = category;
     }
 
-    // Other filters
-    if (category) query.category = category;
-    if (providerId && req.user.role === 'admin') query.providerId = providerId;
-    if (city) query['location.city'] = new RegExp(city, 'i');
-    if (country) query['location.country'] = new RegExp(country, 'i');
-    if (featured !== undefined) query.featured = featured === 'true';
+    // City filter
+    if (city) {
+      query['location.city'] = new RegExp(city, 'i');
+    }
 
     // Price range filter
     if (minPrice || maxPrice) {
@@ -175,13 +162,13 @@ const getActivities = async (req, res) => {
       if (maxPrice) query['pricing.basePrice'].$lte = parseFloat(maxPrice);
     }
 
-    // Search functionality
+    // Search filter
     if (search) {
       query.$or = [
         { title: new RegExp(search, 'i') },
         { description: new RegExp(search, 'i') },
         { 'location.city': new RegExp(search, 'i') },
-        { tags: new RegExp(search, 'i') }
+        { tags: { $in: [new RegExp(search, 'i')] } }
       ];
     }
 
@@ -191,10 +178,25 @@ const getActivities = async (req, res) => {
     const skip = (pageNumber - 1) * limitNumber;
 
     // Sort options
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    let sortOptions = {};
+    switch (sortBy) {
+      case 'price':
+        sortOptions['pricing.basePrice'] = sortOrder === 'desc' ? -1 : 1;
+        break;
+      case 'rating':
+        sortOptions['stats.rating.average'] = -1;
+        break;
+      case 'popularity':
+        sortOptions['stats.views'] = -1;
+        break;
+      case 'newest':
+        sortOptions.createdAt = -1;
+        break;
+      default:
+        sortOptions.createdAt = sortOrder === 'desc' ? -1 : 1;
+    }
 
-    // Execute query with pagination
+    // Execute query with population
     const [activities, totalActivities] = await Promise.all([
       Activity.find(query)
         .populate('providerId', 'name email companyName rating')
@@ -205,24 +207,50 @@ const getActivities = async (req, res) => {
       Activity.countDocuments(query)
     ]);
 
-    // Calculate pagination info
+    // CRITICAL FIX: Enrich activities with all required fields
+    const enrichedActivities = activities.map(activity => ({
+      ...activity,
+      // Ensure all required fields are present
+      status: activity.status || 'active',
+      createdAt: activity.createdAt || new Date().toISOString(),
+      updatedAt: activity.updatedAt || new Date().toISOString(),
+      // Ensure nested field compatibility
+      availability: activity.availability || { isActive: true },
+      capacity: activity.capacity || { min: 1, max: 10 },
+      stats: activity.stats || { 
+        views: 0, 
+        rating: { average: 0, count: 0 }, 
+        bookings: { total: 0 } 
+      },
+      images: activity.images || [],
+      features: activity.features || [],
+      tags: activity.tags || [],
+      // Ensure pricing has proper default values
+      pricing: {
+        basePrice: activity.pricing?.basePrice || 0,
+        currency: activity.pricing?.currency || 'EUR',
+        priceType: activity.pricing?.priceType || 'fixed',
+        ...activity.pricing
+      }
+    }));
+
+    // Calculate pagination
     const totalPages = Math.ceil(totalActivities / limitNumber);
-    const hasNext = pageNumber < totalPages;
-    const hasPrev = pageNumber > 1;
 
     res.status(200).json({
       success: true,
       data: {
-        activities,
+        activities: enrichedActivities,
         pagination: {
           currentPage: pageNumber,
           totalPages,
           totalActivities,
-          hasNext,
-          hasPrev,
+          hasNext: pageNumber < totalPages,
+          hasPrev: pageNumber > 1,
           limit: limitNumber
         }
-      }
+      },
+      message: 'Activities retrieved successfully'
     });
 
   } catch (error) {
@@ -234,7 +262,7 @@ const getActivities = async (req, res) => {
   }
 };
 
-// Get single activity by ID
+// Get activity by ID - ALSO CORRECTED
 const getActivityById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -248,7 +276,7 @@ const getActivityById = async (req, res) => {
     }
 
     const activity = await Activity.findById(id)
-      .populate('providerId', 'name email phone companyName location rating reviewsCount')
+      .populate('providerId', 'name email companyName rating phone')
       .lean();
 
     if (!activity) {
@@ -258,29 +286,45 @@ const getActivityById = async (req, res) => {
       });
     }
 
-    // Check access permissions
-    const canAccess = 
-      activity.status === 'active' || // Public access to active
-      req.user.role === 'admin' || // Admin can see all
-      (req.user.role === 'prestataire' && activity.providerId._id.toString() === req.user._id.toString()); // Provider can see own
-
-    if (!canAccess) {
-      return res.status(403).json({
+    // Check if activity is accessible
+    if (activity.status === 'deleted' || activity.status === 'suspended') {
+      return res.status(404).json({
         success: false,
-        message: 'Access denied to this activity'
+        message: 'Activity not found'
       });
     }
 
-    // Increment view count if it's a public view (not owner/admin)
-    if (activity.status === 'active' && req.user._id.toString() !== activity.providerId._id.toString()) {
-      await Activity.findByIdAndUpdate(id, { $inc: { 'stats.views': 1 } });
-    }
+    // Enrich single activity as well
+    const enrichedActivity = {
+      ...activity,
+      status: activity.status || 'active',
+      createdAt: activity.createdAt || new Date().toISOString(),
+      updatedAt: activity.updatedAt || new Date().toISOString(),
+      availability: activity.availability || { isActive: true },
+      capacity: activity.capacity || { min: 1, max: 10 },
+      stats: activity.stats || { 
+        views: 0, 
+        rating: { average: 0, count: 0 }, 
+        bookings: { total: 0 } 
+      },
+      images: activity.images || [],
+      features: activity.features || [],
+      tags: activity.tags || [],
+      pricing: {
+        basePrice: activity.pricing?.basePrice || 0,
+        currency: activity.pricing?.currency || 'EUR',
+        priceType: activity.pricing?.priceType || 'fixed',
+        ...activity.pricing
+      }
+    };
+
+    // Increment views (without awaiting to not slow down response)
+    Activity.findByIdAndUpdate(id, { $inc: { 'stats.views': 1 } }).catch(console.error);
 
     res.status(200).json({
       success: true,
-      data: {
-        activity
-      }
+      data: { activity: enrichedActivity },
+      message: 'Activity retrieved successfully'
     });
 
   } catch (error) {
@@ -319,67 +363,31 @@ const updateActivity = async (req, res) => {
     // Check permissions
     const canUpdate = 
       req.user.role === 'admin' ||
-      (req.user.role === 'prestataire' && activity.providerId.toString() === req.user._id.toString());
+      activity.providerId.toString() === req.user._id.toString();
 
     if (!canUpdate) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. You can only update your own activities.'
+        message: 'Access denied. You can only modify your own activities.'
       });
     }
 
-    // Validate category if provided
-    if (updates.category) {
-      const validCategories = ['realEstate', 'airTravel', 'transport', 'lifestyle', 'events', 'security', 'corporate'];
-      if (!validCategories.includes(updates.category)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid category specified'
-        });
-      }
-    }
+    // Remove fields that shouldn't be updated directly
+    delete updates.providerId;
+    delete updates.providerName;
+    delete updates.stats;
+    delete updates.createdAt;
 
-    // Validate status updates (only admin can approve/reject)
-    if (updates.status && updates.status !== activity.status) {
-      if (req.user.role !== 'admin' && !['draft', 'pending'].includes(updates.status)) {
-        return res.status(403).json({
-          success: false,
-          message: 'Only admins can change activity status to active, paused, or rejected'
-        });
-      }
-    }
+    // Update the activity
+    Object.assign(activity, updates);
+    activity.updatedAt = new Date();
 
-    // Update allowed fields
-    const allowedUpdates = [
-      'title', 'description', 'shortDescription', 'category', 'subCategory', 'tags',
-      'location', 'pricing', 'capacity', 'duration', 'availability', 'images', 'videos',
-      'features', 'amenities', 'requirements', 'seo'
-    ];
-
-    // Admin can update status and featured
-    if (req.user.role === 'admin') {
-      allowedUpdates.push('status', 'featured', 'priority', 'moderationNotes');
-    }
-
-    // Apply updates
-    allowedUpdates.forEach(field => {
-      if (updates[field] !== undefined) {
-        activity[field] = updates[field];
-      }
-    });
-
-    // Save updated activity
     await activity.save();
-
-    // Populate for response
-    await activity.populate('providerId', 'name email companyName');
 
     res.status(200).json({
       success: true,
       message: 'Activity updated successfully',
-      data: {
-        activity
-      }
+      data: { activity }
     });
 
   } catch (error) {
@@ -427,7 +435,7 @@ const deleteActivity = async (req, res) => {
     // Check permissions
     const canDelete = 
       req.user.role === 'admin' ||
-      (req.user.role === 'prestataire' && activity.providerId.toString() === req.user._id.toString());
+      activity.providerId.toString() === req.user._id.toString();
 
     if (!canDelete) {
       return res.status(403).json({
@@ -436,22 +444,10 @@ const deleteActivity = async (req, res) => {
       });
     }
 
-    // Check if activity has active bookings
-    const Booking = require('../models/Booking');
-    const activeBookings = await Booking.countDocuments({
-      activityId: id,
-      status: { $in: ['pending', 'confirmed', 'in_progress'] }
-    });
-
-    if (activeBookings > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete activity with active bookings. Please cancel or complete them first.'
-      });
-    }
-
-    // Delete activity
-    await Activity.findByIdAndDelete(id);
+    // Soft delete by changing status
+    activity.status = 'deleted';
+    activity.updatedAt = new Date();
+    await activity.save();
 
     res.status(200).json({
       success: true,
@@ -467,7 +463,7 @@ const deleteActivity = async (req, res) => {
   }
 };
 
-// Toggle activity status (activate/pause)
+// Toggle activity status (active/paused)
 const toggleActivityStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -493,7 +489,7 @@ const toggleActivityStatus = async (req, res) => {
     // Check permissions
     const canToggle = 
       req.user.role === 'admin' ||
-      (req.user.role === 'prestataire' && activity.providerId.toString() === req.user._id.toString());
+      activity.providerId.toString() === req.user._id.toString();
 
     if (!canToggle) {
       return res.status(403).json({
@@ -533,6 +529,99 @@ const toggleActivityStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while toggling activity status'
+    });
+  }
+};
+
+// Search activities
+const searchActivities = async (req, res) => {
+  try {
+    const {
+      query: searchQuery,
+      category,
+      city,
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 20,
+      sortBy = 'relevance'
+    } = req.query;
+
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required'
+      });
+    }
+
+    // Build search query
+    let query = {
+      status: 'active',
+      $or: [
+        { $text: { $search: searchQuery } },
+        { title: new RegExp(searchQuery, 'i') },
+        { description: new RegExp(searchQuery, 'i') },
+        { tags: { $in: [new RegExp(searchQuery, 'i')] } }
+      ]
+    };
+
+    // Apply filters
+    if (category) query.category = category;
+    if (city) query['location.city'] = new RegExp(city, 'i');
+    if (minPrice) query['pricing.basePrice'] = { ...query['pricing.basePrice'], $gte: parseFloat(minPrice) };
+    if (maxPrice) query['pricing.basePrice'] = { ...query['pricing.basePrice'], $lte: parseFloat(maxPrice) };
+
+    // Pagination
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Sort options
+    let sortOptions = {};
+    if (sortBy === 'price') {
+      sortOptions['pricing.basePrice'] = 1;
+    } else if (sortBy === 'rating') {
+      sortOptions['stats.rating.average'] = -1;
+    } else if (sortBy === 'newest') {
+      sortOptions.createdAt = -1;
+    } else {
+      // Default: relevance (text score)
+      sortOptions = { score: { $meta: 'textScore' } };
+    }
+
+    const [activities, totalActivities] = await Promise.all([
+      Activity.find(query)
+        .populate('providerId', 'name email companyName rating')
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limitNumber)
+        .lean(),
+      Activity.countDocuments(query)
+    ]);
+
+    // Calculate pagination
+    const totalPages = Math.ceil(totalActivities / limitNumber);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        activities,
+        pagination: {
+          currentPage: pageNumber,
+          totalPages,
+          totalActivities,
+          hasNext: pageNumber < totalPages,
+          hasPrev: pageNumber > 1,
+          limit: limitNumber
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Search activities error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while searching activities'
     });
   }
 };
@@ -604,68 +693,6 @@ const getProviderActivities = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while fetching provider activities'
-    });
-  }
-};
-
-// Search activities
-const searchActivities = async (req, res) => {
-  try {
-    const { q: searchTerm, category, city, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
-
-    if (!searchTerm) {
-      return res.status(400).json({
-        success: false,
-        message: 'Search term is required'
-      });
-    }
-
-    // Build filters
-    const filters = {};
-    if (category) filters.category = category;
-    if (city) filters.city = city;
-    if (minPrice) filters.minPrice = parseFloat(minPrice);
-    if (maxPrice) filters.maxPrice = parseFloat(maxPrice);
-
-    // Pagination
-    const pageNumber = parseInt(page);
-    const limitNumber = parseInt(limit);
-    const skip = (pageNumber - 1) * limitNumber;
-
-    // Search activities
-    const activities = await Activity.search(searchTerm, filters)
-      .populate('providerId', 'name companyName rating')
-      .sort({ 'stats.rating.average': -1, priority: -1 })
-      .skip(skip)
-      .limit(limitNumber)
-      .lean();
-
-    // Count total results
-    const totalActivities = await Activity.search(searchTerm, filters).countDocuments();
-    const totalPages = Math.ceil(totalActivities / limitNumber);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        activities,
-        searchTerm,
-        filters,
-        pagination: {
-          currentPage: pageNumber,
-          totalPages,
-          totalActivities,
-          hasNext: pageNumber < totalPages,
-          hasPrev: pageNumber > 1,
-          limit: limitNumber
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Search activities error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while searching activities'
     });
   }
 };

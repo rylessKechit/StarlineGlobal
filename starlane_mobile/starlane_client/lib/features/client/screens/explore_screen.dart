@@ -1,4 +1,4 @@
-// Path: starlane_mobile/starlane_client/lib/features/client/screens/explore_screen.dart
+// lib/features/client/screens/explore_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -33,11 +33,23 @@ class _ExploreScreenView extends StatefulWidget {
 
 class _ExploreScreenViewState extends State<_ExploreScreenView> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isScrolled = false;
   
   @override
   void initState() {
     super.initState();
     _loadActivities();
+    
+    // ✅ Listener pour sticky header
+    _scrollController.addListener(() {
+      final isScrolled = _scrollController.offset > 50;
+      if (_isScrolled != isScrolled) {
+        setState(() {
+          _isScrolled = isScrolled;
+        });
+      }
+    });
   }
 
   void _loadActivities() {
@@ -68,41 +80,37 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header avec recherche
-            _buildHeader(),
+            // ✅ HEADER STICKY avec animation
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                color: StarlaneColors.white,
+                boxShadow: _isScrolled 
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        offset: const Offset(0, 2),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ]
+                  : null,
+              ),
+              child: _buildStickyHeader(),
+            ),
             
-            // Contenu principal
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async => _onRefresh(),
-                color: StarlaneColors.navy500,
-                child: BlocBuilder<ActivityBloc, ActivityState>(
-                  builder: (context, state) {
-                    if (state is ActivityLoading) {
-                      return _buildLoadingState();
-                    }
-                    
-                    if (state is ActivityError) {
-                      return _buildErrorState(state.message);
-                    }
-                    
-                    if (state is ActivityLoaded) {
-                      if (state.activities.isEmpty) {
-                        return _buildEmptyState();
-                      }
-                      return _buildActivitiesList(state.activities);
-                    }
-                    
-                    if (state is ActivityFeaturedLoaded) {
-                      if (state.activities.isEmpty) {
-                        return _buildEmptyState();
-                      }
-                      return _buildActivitiesList(state.activities);
-                    }
-                    
-                    return _buildEmptyState();
-                  },
-                ),
+              child: BlocBuilder<ActivityBloc, ActivityState>(
+                builder: (context, state) {
+                  if (state is ActivityLoading) {
+                    return _buildLoadingState();
+                  } else if (state is ActivityLoaded) {
+                    return _buildLoadedState(state.activities);
+                  } else if (state is ActivityError) {
+                    return _buildErrorState(state.message);
+                  }
+                  return _buildEmptyState();
+                },
               ),
             ),
           ],
@@ -111,41 +119,180 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
     );
   }
 
-  Widget _buildHeader() {
+  // ✅ NOUVEAU: Header sticky
+  Widget _buildStickyHeader() {
     return Container(
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        color: StarlaneColors.white,
-        boxShadow: StarlaneColors.softShadow,
-      ),
+      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Titre
+          // Titre toujours visible
           Text(
             'Explorer',
             style: TextStyle(
-              fontSize: 28.sp,
+              fontSize: _isScrolled ? 24.sp : 28.sp,
               fontWeight: FontWeight.bold,
+              color: StarlaneColors.textPrimary,
+            ),
+          ),
+          
+          // ✅ CORRECTION: Description avec AnimatedSize au lieu d'AnimatedContainer
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: _isScrolled 
+              ? const SizedBox.shrink() 
+              : Container(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 8.h),
+                      Text(
+                        'Découvrez les activités de nos prestataires partenaires',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          color: StarlaneColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ),
+          
+          SizedBox(height: _isScrolled ? 12.h : 20.h),
+          
+          // Search bar plus compacte
+          Container(
+            height: 44.h,
+            decoration: BoxDecoration(
+              color: StarlaneColors.gray50,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: StarlaneColors.gray200,
+                width: 1,
+              ),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: StarlaneColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Rechercher une activité...',
+                hintStyle: TextStyle(
+                  fontSize: 14.sp,
+                  color: StarlaneColors.textSecondary,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: 20.sp,
+                  color: StarlaneColors.textSecondary,
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16.w,
+                  vertical: 10.h,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: CircularProgressIndicator(
+        color: StarlaneColors.primary,
+      ),
+    );
+  }
+
+  Widget _buildLoadedState(List<Activity> activities) {
+    if (activities.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => _onRefresh(),
+      color: StarlaneColors.primary,
+      child: _buildActivitiesList(activities),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 64.sp,
+            color: StarlaneColors.error,
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Une erreur est survenue',
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w600,
               color: StarlaneColors.textPrimary,
             ),
           ),
           SizedBox(height: 8.h),
           Text(
-            'Découvrez les activités de nos prestataires partenaires',
+            message,
             style: TextStyle(
-              fontSize: 16.sp,
+              fontSize: 14.sp,
               color: StarlaneColors.textSecondary,
             ),
+            textAlign: TextAlign.center,
           ),
-          SizedBox(height: 20.h),
-          
-          // Barre de recherche
-          StarlaneTextField(
-            controller: _searchController,
-            hintText: 'Rechercher une activité...',
-            prefixIcon: Icons.search,
-            onChanged: _onSearchChanged,
+          SizedBox(height: 24.h),
+          ElevatedButton(
+            onPressed: _onRefresh,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: StarlaneColors.primary,
+              foregroundColor: StarlaneColors.white,
+            ),
+            child: Text('Réessayer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.explore_outlined,
+            size: 64.sp,
+            color: StarlaneColors.textSecondary,
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Aucune activité trouvée',
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w600,
+              color: StarlaneColors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Essayez de modifier vos critères de recherche',
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: StarlaneColors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -154,7 +301,8 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
 
   Widget _buildActivitiesList(List<Activity> activities) {
     return ListView.builder(
-      padding: EdgeInsets.all(20.w),
+      controller: _scrollController, // ✅ Ajout du controller
+      padding: EdgeInsets.all(16.w), // ✅ Padding réduit
       itemCount: activities.length,
       itemBuilder: (context, index) {
         final activity = activities[index];
@@ -165,18 +313,36 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
 
   Widget _buildActivityCard(Activity activity) {
     return Container(
-      margin: EdgeInsets.only(bottom: 20.h),
+      margin: EdgeInsets.only(bottom: 16.h), // ✅ Margin réduite
       decoration: BoxDecoration(
         color: StarlaneColors.white,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: StarlaneColors.softShadow,
+        border: Border.all(
+          color: StarlaneColors.gray200, // ✅ Bordure ajoutée
+          width: 1,
+        ),
+        boxShadow: [
+          // ✅ Ombre plus accentuée
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            offset: const Offset(0, 6),
+            blurRadius: 16,
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            offset: const Offset(0, 2),
+            blurRadius: 8,
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image de l'activité
+          // ✅ Image plus petite
           Container(
-            height: 200.h,
+            height: 160.h, // ✅ Réduit de 200h à 160h
             decoration: BoxDecoration(
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16.r),
@@ -191,89 +357,63 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
               child: Stack(
                 children: [
                   // Image principale
-                  activity.images.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: activity.images.first,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          placeholder: (context, url) => Container(
-                            color: StarlaneColors.gray200,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: StarlaneColors.navy500,
-                              ),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: StarlaneColors.navy100,
-                            child: Center(
-                              child: Icon(
-                                _getCategoryIcon(activity.category),
-                                size: 48.sp,
-                                color: StarlaneColors.navy500,
-                              ),
-                            ),
-                          ),
-                        )
-                      : Container(
-                          color: StarlaneColors.navy100,
-                          child: Center(
-                            child: Icon(
-                              _getCategoryIcon(activity.category.name),
-                              size: 48.sp,
-                              color: StarlaneColors.navy500,
-                            ),
-                          ),
-                        ),
+                  _buildActivityImage(activity),
                   
-                  // Badge catégorie
+                  // ✅ Badge catégorie avec couleurs matching
                   Positioned(
                     top: 12.h,
                     left: 12.w,
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h), // ✅ Plus compact
                       decoration: BoxDecoration(
-                        color: StarlaneColors.navy500.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(20.r),
+                        color: _getCategoryColor(activity.category).withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(16.r), // ✅ Plus arrondi
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 1,
+                        ),
                       ),
-                      child:                       Text(
-                        ActivityCategory.fromString(activity.category).displayName,
+                      child: Text(
+                        _getCategoryDisplayName(activity.category),
                         style: TextStyle(
-                          color: StarlaneColors.white,
-                          fontSize: 12.sp,
+                          fontSize: 11.sp, // ✅ Police plus petite
                           fontWeight: FontWeight.w600,
+                          color: StarlaneColors.white,
                         ),
                       ),
                     ),
                   ),
                   
-                  // Rating badge si disponible
-                  if (activity.reviewsCount > 0)
+                  // Badge rating si disponible
+                  if (activity.rating > 0)
                     Positioned(
                       top: 12.h,
                       right: 12.w,
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h), // ✅ Plus compact
                         decoration: BoxDecoration(
-                          color: StarlaneColors.orange500.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(12.r),
+                          color: StarlaneColors.gold500,
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.star,
-                              size: 14.sp,
+                              size: 10.sp, // ✅ Icône plus petite
                               color: StarlaneColors.white,
                             ),
-                            SizedBox(width: 4.w),
+                            SizedBox(width: 2.w),
                             Text(
                               activity.rating.toStringAsFixed(1),
                               style: TextStyle(
+                                fontSize: 9.sp, // ✅ Texte plus petit
+                                fontWeight: FontWeight.bold,
                                 color: StarlaneColors.white,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -285,9 +425,17 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
             ),
           ),
           
-          // Contenu
-          Padding(
-            padding: EdgeInsets.all(16.w),
+          // Contenu blanc plus compact
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(14.w), // ✅ Padding réduit de 16 à 14
+            decoration: BoxDecoration(
+              color: StarlaneColors.white,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(16.r),
+                bottomRight: Radius.circular(16.r),
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -301,18 +449,18 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
                           Text(
                             activity.title,
                             style: TextStyle(
-                              fontSize: 18.sp,
+                              fontSize: 17.sp, // ✅ Légèrement réduit
                               fontWeight: FontWeight.bold,
                               color: StarlaneColors.textPrimary,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          SizedBox(height: 4.h),
+                          SizedBox(height: 3.h), // ✅ Espacement réduit
                           Text(
                             'Proposé par ${activity.providerName}',
                             style: TextStyle(
-                              fontSize: 14.sp,
+                              fontSize: 13.sp, // ✅ Légèrement réduit
                               color: StarlaneColors.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
@@ -322,20 +470,20 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
                     ),
                   ],
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 10.h), // ✅ Espacement réduit
                 
                 // Description
                 Text(
                   activity.description,
                   style: TextStyle(
-                    fontSize: 14.sp,
+                    fontSize: 13.sp, // ✅ Légèrement réduit
                     color: StarlaneColors.textSecondary,
                     height: 1.4,
                   ),
-                  maxLines: 3,
+                  maxLines: 2, // ✅ Réduit à 2 lignes
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 16.h),
+                SizedBox(height: 12.h), // ✅ Espacement réduit
                 
                 // Info bottom
                 Row(
@@ -343,7 +491,7 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
                     // Location
                     Icon(
                       Icons.location_on_outlined,
-                      size: 16.sp,
+                      size: 15.sp, // ✅ Icône plus petite
                       color: StarlaneColors.textSecondary,
                     ),
                     SizedBox(width: 4.w),
@@ -351,44 +499,18 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
                       child: Text(
                         '${activity.city}, ${activity.country}',
                         style: TextStyle(
-                          fontSize: 14.sp,
+                          fontSize: 13.sp, // ✅ Texte plus petit
                           color: StarlaneColors.textSecondary,
                         ),
                       ),
                     ),
-                    
-                    // Duration si disponible
-                    if (activity.duration > 0) ...[
-                      Icon(
-                        Icons.access_time_outlined,
-                        size: 16.sp,
-                        color: StarlaneColors.textSecondary,
-                      ),
-                      SizedBox(width: 4.w),
-                      Text(
-                        '${activity.duration} min',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          color: StarlaneColors.textSecondary,
-                        ),
-                      ),
-                      SizedBox(width: 16.w),
-                    ],
-                    
                     // Prix
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                      decoration: BoxDecoration(
-                        color: StarlaneColors.navy500,
-                        borderRadius: BorderRadius.circular(20.r),
-                      ),
-                      child: Text(
-                        '${activity.price.toInt()}€',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                          color: StarlaneColors.white,
-                        ),
+                    Text(
+                      '${activity.price.toStringAsFixed(0)}${_getCurrencySymbol(activity.currency)}',
+                      style: TextStyle(
+                        fontSize: 17.sp, // ✅ Légèrement réduit
+                        fontWeight: FontWeight.bold,
+                        color: StarlaneColors.gold500,
                       ),
                     ),
                   ],
@@ -401,124 +523,129 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
     );
   }
 
-  Widget _buildLoadingState() {
-    return ListView.builder(
-      padding: EdgeInsets.all(20.w),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return Container(
-          height: 300.h,
-          margin: EdgeInsets.only(bottom: 20.h),
-          decoration: BoxDecoration(
-            color: StarlaneColors.gray200,
-            borderRadius: BorderRadius.circular(16.r),
+  // ✅ NOUVELLE FONCTION: Couleurs matching avec home screen
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'airTravel':
+        return const Color(0xFF3B82F6); // Bleu comme sur home screen
+      case 'transport':
+        return const Color(0xFF10B981); // Vert émeraude
+      case 'realEstate':
+        return const Color(0xFFF59E0B); // Orange/ambre
+      case 'corporate':
+        return const Color(0xFF8B5CF6); // Violet
+      case 'lifestyle':
+        return const Color(0xFFEF4444); // Rouge
+      case 'events':
+        return const Color(0xFF06B6D4); // Cyan
+      case 'security':
+        return const Color(0xFF6B7280); // Gris
+      default:
+        return StarlaneColors.navy500;
+    }
+  }
+
+  // Gestion sécurisée des images
+  Widget _buildActivityImage(Activity activity) {
+    final imageUrl = activity.primaryImageUrl;
+    
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        placeholder: (context, url) => Container(
+          color: StarlaneColors.gray200,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: StarlaneColors.navy500,
+            ),
           ),
-        );
-      },
-    );
+        ),
+        errorWidget: (context, url, error) => _buildDefaultCategoryImage(activity.category),
+      );
+    } else {
+      return _buildDefaultCategoryImage(activity.category);
+    }
   }
 
-  Widget _buildErrorState(String message) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(20.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64.sp,
-              color: StarlaneColors.error,
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              'Erreur lors du chargement',
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-                color: StarlaneColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: StarlaneColors.textSecondary,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            StarlaneButton(
-              text: 'Réessayer',
-              onPressed: _onRefresh,
-              style: StarlaneButtonStyle.primary,
-            ),
-          ],
+  // Image par défaut basée sur la catégorie
+  Widget _buildDefaultCategoryImage(String category) {
+    return Container(
+      color: _getCategoryColor(category).withOpacity(0.1),
+      child: Center(
+        child: Icon(
+          _getCategoryIcon(category),
+          size: 40.sp, // ✅ Icône plus petite
+          color: _getCategoryColor(category),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(20.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.explore_outlined,
-              size: 80.sp,
-              color: StarlaneColors.gray400,
-            ),
-            SizedBox(height: 24.h),
-            Text(
-              'Aucune activité disponible',
-              style: TextStyle(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.bold,
-                color: StarlaneColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: 12.h),
-            Text(
-              'Nos prestataires partenaires ajoutent régulièrement de nouvelles activités premium.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: StarlaneColors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            StarlaneButton(
-              text: 'Actualiser',
-              onPressed: _onRefresh,
-              style: StarlaneButtonStyle.primary,
-            ),
-          ],
-        ),
-      ),
-    );
+  // Fonction pour obtenir l'icône de catégorie
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'realEstate':
+        return Icons.home_outlined;
+      case 'airTravel':
+        return Icons.flight_outlined;
+      case 'transport':
+        return Icons.directions_car_outlined;
+      case 'corporate':
+        return Icons.business_outlined;
+      case 'lifestyle':
+        return Icons.spa_outlined;
+      case 'events':
+        return Icons.event_outlined;
+      case 'security':
+        return Icons.security_outlined;
+      default:
+        return Icons.category_outlined;
+    }
   }
 
-  IconData _getCategoryIcon(String categoryName) {
-    switch (categoryName) {
-      case 'realEstate': return Icons.home;
-      case 'airTravel': return Icons.flight;
-      case 'transport': return Icons.directions_car;
-      case 'lifestyle': return Icons.spa;
-      case 'events': return Icons.event;
-      case 'security': return Icons.security;
-      case 'corporate': return Icons.business;
-      default: return Icons.category;
+  // Fonction pour le nom d'affichage des catégories
+  String _getCategoryDisplayName(String category) {
+    switch (category) {
+      case 'realEstate':
+        return 'Immobilier';
+      case 'airTravel':
+        return 'Aviation Privée';
+      case 'transport':
+        return 'Transport';
+      case 'corporate':
+        return 'Corporate';
+      case 'lifestyle':
+        return 'Lifestyle';
+      case 'events':
+        return 'Événements';
+      case 'security':
+        return 'Sécurité';
+      default:
+        return 'Autre';
+    }
+  }
+
+  // Fonction pour le symbole de devise
+  String _getCurrencySymbol(String currency) {
+    switch (currency) {
+      case 'EUR':
+        return '€';
+      case 'USD':
+        return '\$';
+      case 'GBP':
+        return '£';
+      default:
+        return currency;
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose(); // ✅ Dispose du controller
     super.dispose();
   }
 }

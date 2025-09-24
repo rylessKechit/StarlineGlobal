@@ -1,4 +1,4 @@
-// Path: starlane_mobile/starlane_client/lib/data/models/activity.dart
+// lib/data/models/activity.dart
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -12,29 +12,19 @@ class Activity extends Equatable {
   final String description;
   final String? shortDescription;
   
-  // ✅ CORRIGÉ: category est un String depuis le backend, pas un enum
   final String category;
-  
   final String? subCategory;
   final List<String> tags;
   
-  // ✅ CORRIGÉ: providerId devient un objet complet depuis le backend
   @JsonKey(name: 'providerId')
   final ActivityProvider? provider;
   
   final String providerName;
   final String? companyName;
   
-  // ✅ CORRIGÉ: location est un objet depuis le backend
   final ActivityLocation location;
-  
-  // ✅ CORRIGÉ: pricing est un objet depuis le backend  
   final ActivityPricing pricing;
-  
-  // ✅ CORRIGÉ: capacity est un objet depuis le backend
   final ActivityCapacity? capacity;
-  
-  // ✅ CORRIGÉ: availability est un objet depuis le backend
   final ActivityAvailability? availability;
   
   final List<ActivityImage> images;
@@ -42,10 +32,7 @@ class Activity extends Equatable {
   final bool featured;
   final int priority;
   
-  // ✅ AJOUTÉ: status depuis le backend
   final String status;
-  
-  // ✅ CORRIGÉ: stats est un objet depuis le backend
   final ActivityStats? stats;
   
   final DateTime createdAt;
@@ -76,17 +63,82 @@ class Activity extends Equatable {
     required this.updatedAt,
   });
 
-  factory Activity.fromJson(Map<String, dynamic> json) => _$ActivityFromJson(json);
+  factory Activity.fromJson(Map<String, dynamic> json) {
+    try {
+      final now = DateTime.now();
+      
+      return Activity(
+        id: json['_id'] as String,
+        title: json['title'] as String,
+        description: json['description'] as String,
+        shortDescription: json['shortDescription'] as String?,
+        category: json['category'] as String,
+        subCategory: json['subCategory'] as String?,
+        tags: (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+        provider: json['providerId'] != null && json['providerId'] is Map<String, dynamic>
+            ? ActivityProvider.fromJson(json['providerId'] as Map<String, dynamic>)
+            : null,
+        providerName: json['providerName'] as String,
+        companyName: json['companyName'] as String?,
+        location: ActivityLocation.fromJson(json['location'] as Map<String, dynamic>),
+        pricing: ActivityPricing.fromJson(json['pricing'] as Map<String, dynamic>),
+        capacity: json['capacity'] != null
+            ? ActivityCapacity.fromJson(json['capacity'] as Map<String, dynamic>)
+            : null,
+        availability: json['availability'] != null
+            ? ActivityAvailability.fromJson(json['availability'] as Map<String, dynamic>)
+            : null,
+        images: (json['images'] as List<dynamic>?)
+            ?.map((e) => ActivityImage.fromJson(e as Map<String, dynamic>))
+            .toList() ?? const [],
+        features: (json['features'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+        featured: json['featured'] as bool? ?? false,
+        priority: (json['priority'] as num?)?.toInt() ?? 0,
+        status: json['status'] as String? ?? 'active',
+        stats: json['stats'] != null
+            ? ActivityStats.fromJson(json['stats'] as Map<String, dynamic>)
+            : null,
+        createdAt: json['createdAt'] != null 
+            ? DateTime.parse(json['createdAt'] as String)
+            : now,
+        updatedAt: json['updatedAt'] != null
+            ? DateTime.parse(json['updatedAt'] as String)
+            : now,
+      );
+    } catch (e, stackTrace) {
+      print('❌ Erreur dans Activity.fromJson:');
+      print('JSON reçu: $json');
+      print('Erreur: $e');
+      print('StackTrace: $stackTrace');
+      rethrow;
+    }
+  }
+
   Map<String, dynamic> toJson() => _$ActivityToJson(this);
 
-  // ✅ GETTERS COMPATIBLES avec votre page Explorer
+  // Getters utiles
   String get city => location.city;
   String get country => location.country;
   double get price => pricing.basePrice;
   String get currency => pricing.currency;
-  int get duration => 60; // Valeur par défaut, adaptez selon vos besoins
+  int get duration => 60; 
   double get rating => stats?.rating?.average ?? 0.0;
   int get reviewsCount => stats?.rating?.count ?? 0;
+  
+  String? get firstImageUrl => images.isNotEmpty ? images.first.url : null;
+  
+  String? get primaryImageUrl {
+    if (images.isEmpty) return null;
+    
+    try {
+      final primaryImage = images.where((img) => img.isPrimary).firstOrNull;
+      if (primaryImage != null) return primaryImage.url;
+    } catch (e) {
+      // Ignore error and fallback
+    }
+    
+    return images.first.url;
+  }
 
   @override
   List<Object?> get props => [
@@ -96,8 +148,6 @@ class Activity extends Equatable {
     status, stats, createdAt, updatedAt
   ];
 }
-
-// ✅ MODÈLES POUR LES SOUS-OBJETS DU BACKEND
 
 @JsonSerializable()
 class ActivityProvider extends Equatable {
@@ -173,7 +223,14 @@ class ActivityPricing extends Equatable {
     this.priceType = 'fixed',
   });
 
-  factory ActivityPricing.fromJson(Map<String, dynamic> json) => _$ActivityPricingFromJson(json);
+  factory ActivityPricing.fromJson(Map<String, dynamic> json) {
+    return ActivityPricing(
+      basePrice: (json['basePrice'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] as String? ?? 'EUR',
+      priceType: json['priceType'] as String? ?? 'fixed',
+    );
+  }
+
   Map<String, dynamic> toJson() => _$ActivityPricingToJson(this);
 
   @override
@@ -205,7 +262,12 @@ class ActivityAvailability extends Equatable {
     required this.isActive,
   });
 
-  factory ActivityAvailability.fromJson(Map<String, dynamic> json) => _$ActivityAvailabilityFromJson(json);
+  factory ActivityAvailability.fromJson(Map<String, dynamic> json) {
+    return ActivityAvailability(
+      isActive: json['isActive'] as bool? ?? true,
+    );
+  }
+
   Map<String, dynamic> toJson() => _$ActivityAvailabilityToJson(this);
 
   @override
@@ -282,7 +344,6 @@ class ActivityBookings extends Equatable {
   List<Object?> get props => [total];
 }
 
-// ✅ ENUM pour catégorie (pour l'affichage)
 enum ActivityCategory {
   realEstate('realEstate', 'Immobilier'),
   airTravel('airTravel', 'Aviation Privée'),
