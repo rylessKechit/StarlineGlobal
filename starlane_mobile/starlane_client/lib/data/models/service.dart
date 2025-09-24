@@ -1,176 +1,166 @@
-// Path: starlane_mobile/starlane_client/lib/data/models/service.dart
-import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:equatable/equatable.dart';
 
 part 'service.g.dart';
 
 @JsonSerializable()
 class Service extends Equatable {
-  @JsonKey(name: '_id')
   final String id;
-  final String name;
+  final String title;
   final String description;
   final String? shortDescription;
-  final ServiceCategory category;
-  final String serviceType;
-  final ServicePricing pricing;
-  final String icon;
-  final List<ServiceImage> images;
-  final List<String> features;
-  final List<String> included;
-  final bool isActive;
-  final bool isFeatured;
-  final int priority;
-  final ServiceDetails? serviceDetails;
-  final ServiceStats stats;
+  final String category;
+  final String? subCategory;
+  final List<String>? tags;
+  final ServicePricing? pricing;
+  final List<ServiceImage>? images;
+  final List<String>? features;
+  final bool featured;
+  final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   const Service({
     required this.id,
-    required this.name,
+    required this.title,
     required this.description,
     this.shortDescription,
     required this.category,
-    required this.serviceType,
-    required this.pricing,
-    required this.icon,
-    this.images = const [],
-    this.features = const [],
-    this.included = const [],
-    this.isActive = true,
-    this.isFeatured = false,
-    this.priority = 0,
-    this.serviceDetails,
-    required this.stats,
+    this.subCategory,
+    this.tags,
+    this.pricing,
+    this.images,
+    this.features,
+    this.featured = false,
+    required this.status,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  factory Service.fromJson(Map<String, dynamic> json) => _$ServiceFromJson(json);
-  Map<String, dynamic> toJson() => _$ServiceToJson(this);
-
-  // Getters utilitaires
-  String get displayDescription => shortDescription ?? description;
-  
-  String get formattedPrice {
-    if (pricing.isCustomQuote) {
-      return 'Sur devis';
+  factory Service.fromJson(Map<String, dynamic> json) {
+    try {
+      // CORRECTION - Adaptation pour votre backend avec gestion robuste des nulls
+      return Service(
+        id: (json['_id'] ?? json['id'] ?? '').toString(),
+        title: (json['name'] ?? json['title'] ?? 'Service sans nom').toString(),
+        description: (json['description'] ?? '').toString(),
+        shortDescription: json['shortDescription']?.toString(),
+        category: (json['category'] ?? 'default').toString(),
+        subCategory: json['subCategory']?.toString(),
+        tags: json['tags'] != null 
+            ? (json['tags'] as List).map((e) => e.toString()).toList()
+            : null,
+        pricing: json['pricing'] != null
+            ? ServicePricing.fromJson(json['pricing'] as Map<String, dynamic>)
+            : null,
+        images: json['images'] != null
+            ? (json['images'] as List)
+                .map((img) => ServiceImage.fromJson(img as Map<String, dynamic>))
+                .toList()
+            : null,
+        features: json['features'] != null
+            ? (json['features'] as List).map((e) => e.toString()).toList()
+            : json['included'] != null
+                ? (json['included'] as List).map((e) => e.toString()).toList()
+                : null,
+        featured: json['isFeatured'] == true || json['featured'] == true,
+        status: (json['isActive'] == true || json['status'] == 'active') ? 'active' : 'inactive',
+        createdAt: DateTime.parse((json['createdAt'] ?? DateTime.now().toIso8601String()).toString()),
+        updatedAt: DateTime.parse((json['updatedAt'] ?? DateTime.now().toIso8601String()).toString()),
+      );
+    } catch (e) {
+      print('🔍 ERREUR Service.fromJson: $e');
+      print('🔍 JSON problématique: $json');
+      // Retour d'un service par défaut en cas d'erreur
+      return Service(
+        id: (json['_id'] ?? json['id'] ?? 'unknown').toString(),
+        title: 'Service indisponible',
+        description: 'Erreur lors du chargement du service',
+        category: 'default',
+        featured: false,
+        status: 'inactive',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
     }
-    
-    const symbols = {'EUR': '€', 'USD': '\$', 'GBP': '£'};
-    final symbol = symbols[pricing.currency] ?? pricing.currency;
-    
-    String suffix = '';
-    switch(pricing.priceType) {
-      case PriceType.perHour:
-        suffix = '/h';
-        break;
-      case PriceType.perDay:
-        suffix = '/jour';
-        break;
-      case PriceType.fixed:
-        suffix = '';
-        break;
-      case PriceType.custom:
-        suffix = '';
-        break;
-    }
-    
-    return '${pricing.basePrice.toStringAsFixed(0)}$symbol$suffix';
   }
+
+  Map<String, dynamic> toJson() => _$ServiceToJson(this);
 
   @override
   List<Object?> get props => [
-    id, name, description, shortDescription, category, serviceType,
-    pricing, icon, images, features, included, isActive, isFeatured,
-    priority, serviceDetails, stats, createdAt, updatedAt
-  ];
-}
+        id,
+        title,
+        description,
+        shortDescription,
+        category,
+        subCategory,
+        tags,
+        pricing,
+        images,
+        features,
+        featured,
+        status,
+        createdAt,
+        updatedAt,
+      ];
 
-@JsonEnum()
-enum ServiceCategory {
-  @JsonValue('airTravel')
-  airTravel,
-  @JsonValue('transport')
-  transport,
-  @JsonValue('realEstate')
-  realEstate,
-  @JsonValue('corporate')
-  corporate;
-
-  String get displayName {
-    switch (this) {
-      case ServiceCategory.airTravel:
-        return 'Aviation Privée';
-      case ServiceCategory.transport:
-        return 'Transport';
-      case ServiceCategory.realEstate:
-        return 'Immobilier';
-      case ServiceCategory.corporate:
-        return 'Corporate';
-    }
+  Service copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? shortDescription,
+    String? category,
+    String? subCategory,
+    List<String>? tags,
+    ServicePricing? pricing,
+    List<ServiceImage>? images,
+    List<String>? features,
+    bool? featured,
+    String? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Service(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      shortDescription: shortDescription ?? this.shortDescription,
+      category: category ?? this.category,
+      subCategory: subCategory ?? this.subCategory,
+      tags: tags ?? this.tags,
+      pricing: pricing ?? this.pricing,
+      images: images ?? this.images,
+      features: features ?? this.features,
+      featured: featured ?? this.featured,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
-
-  String get description {
-    switch (this) {
-      case ServiceCategory.airTravel:
-        return 'Services aériens de luxe';
-      case ServiceCategory.transport:
-        return 'Transport premium';
-      case ServiceCategory.realEstate:
-        return 'Services immobiliers';
-      case ServiceCategory.corporate:
-        return 'Solutions entreprise';
-    }
-  }
-
-  String get iconName {
-    switch (this) {
-      case ServiceCategory.airTravel:
-        return 'flight';
-      case ServiceCategory.transport:
-        return 'directions_car';
-      case ServiceCategory.realEstate:
-        return 'home';
-      case ServiceCategory.corporate:
-        return 'business';
-    }
-  }
-}
-
-@JsonEnum()
-enum PriceType {
-  @JsonValue('fixed')
-  fixed,
-  @JsonValue('per_hour')
-  perHour,
-  @JsonValue('per_day')
-  perDay,
-  @JsonValue('custom')
-  custom;
 }
 
 @JsonSerializable()
 class ServicePricing extends Equatable {
   final double basePrice;
   final String currency;
-  final PriceType priceType;
-  final bool isCustomQuote;
+  final String? unit;
+  final String? priceType;
 
   const ServicePricing({
     required this.basePrice,
-    this.currency = 'EUR',
-    this.priceType = PriceType.fixed,
-    this.isCustomQuote = false,
+    required this.currency,
+    this.unit,
+    this.priceType,
   });
 
-  factory ServicePricing.fromJson(Map<String, dynamic> json) => 
+  factory ServicePricing.fromJson(Map<String, dynamic> json) =>
       _$ServicePricingFromJson(json);
+
   Map<String, dynamic> toJson() => _$ServicePricingToJson(this);
 
   @override
-  List<Object?> get props => [basePrice, currency, priceType, isCustomQuote];
+  List<Object?> get props => [basePrice, currency, unit, priceType];
 }
 
 @JsonSerializable()
@@ -185,139 +175,104 @@ class ServiceImage extends Equatable {
     this.isPrimary = false,
   });
 
-  factory ServiceImage.fromJson(Map<String, dynamic> json) => 
+  factory ServiceImage.fromJson(Map<String, dynamic> json) =>
       _$ServiceImageFromJson(json);
+
   Map<String, dynamic> toJson() => _$ServiceImageToJson(this);
 
   @override
   List<Object?> get props => [url, alt, isPrimary];
 }
 
-@JsonSerializable()
-class ServiceDetails extends Equatable {
-  final String? airTravelType;
-  final String? transportType;
-  final String? realEstateType;
-  final String? corporateType;
-
-  const ServiceDetails({
-    this.airTravelType,
-    this.transportType,
-    this.realEstateType,
-    this.corporateType,
-  });
-
-  factory ServiceDetails.fromJson(Map<String, dynamic> json) => 
-      _$ServiceDetailsFromJson(json);
-  Map<String, dynamic> toJson() => _$ServiceDetailsToJson(this);
-
-  @override
-  List<Object?> get props => [
-    airTravelType, transportType, realEstateType, corporateType
-  ];
+// Enum pour les catégories de services
+enum ServiceCategory {
+  @JsonValue('concierge')
+  concierge,
+  @JsonValue('luxury')
+  luxury,
+  @JsonValue('travel')
+  travel,
+  @JsonValue('lifestyle')
+  lifestyle,
+  @JsonValue('business')
+  business,
+  @JsonValue('security')
+  security,
+  @JsonValue('airTravel') // AJOUTÉ pour votre backend
+  airTravel,
 }
 
-@JsonSerializable()
-class ServiceStats extends Equatable {
-  final int orders;
-  final double revenue;
-
-  const ServiceStats({
-    this.orders = 0,
-    this.revenue = 0.0,
-  });
-
-  factory ServiceStats.fromJson(Map<String, dynamic> json) => 
-      _$ServiceStatsFromJson(json);
-  Map<String, dynamic> toJson() => _$ServiceStatsToJson(this);
-
-  @override
-  List<Object?> get props => [orders, revenue];
+// Enum pour les statuts de services
+enum ServiceStatus {
+  @JsonValue('active')
+  active,
+  @JsonValue('inactive')
+  inactive,
+  @JsonValue('maintenance')
+  maintenance,
 }
 
-// Request Models
-@JsonSerializable()
-class CreateServiceRequest extends Equatable {
-  final String name;
-  final String description;
-  final String? shortDescription;
-  final ServiceCategory category;
-  final String serviceType;
-  final ServicePricing pricing;
-  final String icon;
-  final List<ServiceImage> images;
-  final List<String> features;
-  final List<String> included;
-  final bool isFeatured;
-  final int priority;
-  final ServiceDetails? serviceDetails;
+// Extensions pour les enums
+extension ServiceCategoryExtension on ServiceCategory {
+  String get displayName {
+    switch (this) {
+      case ServiceCategory.concierge:
+        return 'Conciergerie';
+      case ServiceCategory.luxury:
+        return 'Luxe';
+      case ServiceCategory.travel:
+        return 'Voyage';
+      case ServiceCategory.lifestyle:
+        return 'Lifestyle';
+      case ServiceCategory.business:
+        return 'Business';
+      case ServiceCategory.security:
+        return 'Sécurité';
+      case ServiceCategory.airTravel:
+        return 'Aviation Privée';
+    }
+  }
 
-  const CreateServiceRequest({
-    required this.name,
-    required this.description,
-    this.shortDescription,
-    required this.category,
-    required this.serviceType,
-    required this.pricing,
-    required this.icon,
-    this.images = const [],
-    this.features = const [],
-    this.included = const [],
-    this.isFeatured = false,
-    this.priority = 0,
-    this.serviceDetails,
-  });
-
-  factory CreateServiceRequest.fromJson(Map<String, dynamic> json) => 
-      _$CreateServiceRequestFromJson(json);
-  Map<String, dynamic> toJson() => _$CreateServiceRequestToJson(this);
-
-  @override
-  List<Object?> get props => [
-    name, description, shortDescription, category, serviceType,
-    pricing, icon, images, features, included, isFeatured, priority, serviceDetails
-  ];
+  String get value {
+    switch (this) {
+      case ServiceCategory.concierge:
+        return 'concierge';
+      case ServiceCategory.luxury:
+        return 'luxury';
+      case ServiceCategory.travel:
+        return 'travel';
+      case ServiceCategory.lifestyle:
+        return 'lifestyle';
+      case ServiceCategory.business:
+        return 'business';
+      case ServiceCategory.security:
+        return 'security';
+      case ServiceCategory.airTravel:
+        return 'airTravel';
+    }
+  }
 }
 
-@JsonSerializable()
-class UpdateServiceRequest extends Equatable {
-  final String? name;
-  final String? description;
-  final String? shortDescription;
-  final ServiceCategory? category;
-  final String? serviceType;
-  final ServicePricing? pricing;
-  final String? icon;
-  final List<ServiceImage>? images;
-  final List<String>? features;
-  final List<String>? included;
-  final bool? isFeatured;
-  final int? priority;
-  final ServiceDetails? serviceDetails;
+extension ServiceStatusExtension on ServiceStatus {
+  String get displayName {
+    switch (this) {
+      case ServiceStatus.active:
+        return 'Actif';
+      case ServiceStatus.inactive:
+        return 'Inactif';
+      case ServiceStatus.maintenance:
+        return 'Maintenance';
+    }
+  }
 
-  const UpdateServiceRequest({
-    this.name,
-    this.description,
-    this.shortDescription,
-    this.category,
-    this.serviceType,
-    this.pricing,
-    this.icon,
-    this.images,
-    this.features,
-    this.included,
-    this.isFeatured,
-    this.priority,
-    this.serviceDetails,
-  });
-
-  factory UpdateServiceRequest.fromJson(Map<String, dynamic> json) => 
-      _$UpdateServiceRequestFromJson(json);
-  Map<String, dynamic> toJson() => _$UpdateServiceRequestToJson(this);
-
-  @override
-  List<Object?> get props => [
-    name, description, shortDescription, category, serviceType,
-    pricing, icon, images, features, included, isFeatured, priority, serviceDetails
-  ];
+  String get value {
+    switch (this) {
+      case ServiceStatus.active:
+        return 'active';
+      case ServiceStatus.inactive:
+        return 'inactive';
+      case ServiceStatus.maintenance:
+        return 'maintenance';
+    }
+  }
 }

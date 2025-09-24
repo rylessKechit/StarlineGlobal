@@ -1,61 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+// Core imports
 import '../../../core/theme/starlane_colors.dart';
+import '../../../shared/widgets/starlane_widgets.dart';
 
 class SearchSection extends StatelessWidget {
-  final TextEditingController controller;
-  final Function(String)? onChanged;
+  final TextEditingController? controller;
+  final void Function(String)? onSearchChanged; // PARAMÈTRE REQUIS
+  final VoidCallback? onFilterTap;
 
   const SearchSection({
     super.key,
-    required this.controller,
-    this.onChanged,
+    this.controller,
+    this.onSearchChanged, // PARAMÈTRE REQUIS
+    this.onFilterTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      height: 44.h,
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: TextStyle(
-          fontSize: 14.sp,
-          color: StarlaneColors.navy900,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Rechercher un service...',
-          hintStyle: TextStyle(
-            fontSize: 14.sp,
-            color: StarlaneColors.gray400,
+      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
+      child: Row(
+        children: [
+          // Barre de recherche
+          Expanded(
+            child: StarlaneTextField(
+              controller: controller,
+              hintText: 'Rechercher une activité...',
+              prefixIcon: Icons.search,
+              onChanged: onSearchChanged,
+              borderRadius: 16,
+            ),
           ),
-          prefixIcon: Icon(
-            Icons.search,
-            color: StarlaneColors.gray400,
-            size: 20.sp,
+          
+          SizedBox(width: 12.w),
+          
+          // Bouton filtre
+          Container(
+            width: 48.w,
+            height: 48.h,
+            decoration: BoxDecoration(
+              color: StarlaneColors.gold600,
+              borderRadius: BorderRadius.circular(16.r),
+              boxShadow: [
+                BoxShadow(
+                  color: StarlaneColors.gold600.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: IconButton(
+              onPressed: onFilterTap,
+              icon: Icon(
+                Icons.tune_rounded,
+                color: StarlaneColors.white,
+                size: 20.sp,
+              ),
+            ),
           ),
-          filled: true,
-          fillColor: StarlaneColors.white,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 16.w,
-            vertical: 12.h,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: StarlaneColors.gray300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: StarlaneColors.gray300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: StarlaneColors.gold500, width: 2),
-          ),
-          isDense: true,
-        ),
+        ],
       ),
     );
   }

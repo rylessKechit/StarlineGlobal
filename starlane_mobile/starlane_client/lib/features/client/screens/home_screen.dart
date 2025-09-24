@@ -1,10 +1,10 @@
-// Path: starlane_mobile/starlane_client/lib/features/client/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Core imports
 import '../../../core/theme/starlane_colors.dart';
+import '../../../data/models/service.dart';
 
 // Sections
 import '../widgets/home_header_section.dart';
@@ -45,109 +45,53 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     );
   }
 
-  void _onServiceTap(String serviceId) {
+  void _onServiceTap(Service service) { // CORRIGÉ - prend maintenant un Service
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Détails du service $serviceId - À implémenter'),
-        backgroundColor: StarlaneColors.navy500,
+        content: Text('Détails du service ${service.title} - À implémenter'),
+        backgroundColor: StarlaneColors.gold600,
       ),
     );
   }
 
-  void _onSearchChanged(String query) {
-    // TODO: Implémenter la recherche avec les blocs
-    if (query.isNotEmpty) {
-      // Pour l'instant, on utilise encore ActivityBloc pour la recherche
-      // car les services n'ont pas de fonction de recherche textuelle
-      context.read<ActivityBloc>().add(
-        ActivitySearchRequested(query: query),
-      );
-    }
-    print('Recherche: $query');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        // Provider pour ActivityBloc (pour la recherche et autres fonctionnalités)
-        BlocProvider<ActivityBloc>(
-          create: (context) => ActivityBloc(
-            activityRepository: context.read<ActivityRepository>(),
-          ),
-        ),
-        // Provider pour ServiceBloc (pour les services phares)
-        BlocProvider<ServiceBloc>(
-          create: (context) => ServiceBloc(
-            serviceRepository: context.read<ServiceRepository>(),
-          ),
-        ),
-      ],
-      child: Scaffold(
-        backgroundColor: StarlaneColors.gray50,
-        body: Column(
-          children: [
-            // ✅ HEADER FIXE (ne scroll pas)
-            const HomeHeaderSection(),
-
-            // ✅ BARRE DE RECHERCHE AVEC CONTAINER ET OMBRE
-            Container(
-              decoration: BoxDecoration(
-                color: StarlaneColors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: StarlaneColors.black.withOpacity(0.08),
-                    blurRadius: 8.r,
-                    offset: Offset(0, 2.h),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  SizedBox(height: 16.h),
-                  SearchSection(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                  ),
-                  SizedBox(height: 16.h),
-                ],
-              ),
-            ),
-            
-            // ✅ CONTENU SCROLLABLE
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  // Rafraîchir les deux types de données
-                  context.read<ActivityBloc>()
-                      .add(ActivityFeaturedLoadRequested());
-                  context.read<ServiceBloc>()
-                      .add(ServiceFeaturedLoadRequested());
+    return Scaffold(
+      backgroundColor: StarlaneColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Header avec avatar et notifications
+              const HomeHeaderSection(),
+              
+              // Section de recherche
+              SearchSection(
+                controller: _searchController,
+                onSearchChanged: (value) {
+                  // TODO: Implement search
+                  print('Search: $value');
                 },
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      SizedBox(height: 8.h),
-                      
-                      // Grille des catégories 2x2
-                      CategoriesGridSection(
-                        onCategoryTap: _onCategoryTap,
-                      ),
-                      
-                      SizedBox(height: 6.h),
-                      
-                      // ✅ SERVICES PHARES - UTILISE MAINTENANT ServiceBloc
-                      FeaturedServicesSection(
-                        onServiceTap: _onServiceTap,
-                      ),
-                      
-                      SizedBox(height: 20.h),
-                    ],
-                  ),
-                ),
+                onFilterTap: () {
+                  // TODO: Implement filter
+                  print('Filter tapped');
+                },
               ),
-            ),
-          ],
+              
+              // Grille des catégories (2x2)
+              CategoriesGridSection(
+                onCategoryTap: _onCategoryTap,
+              ),
+              
+              // Services phares
+              FeaturedServicesSection(
+                onServiceTap: _onServiceTap, // CORRIGÉ - passe la fonction corrigée
+              ),
+              
+              // Espacement final
+              SizedBox(height: 32.h),
+            ],
+          ),
         ),
       ),
     );

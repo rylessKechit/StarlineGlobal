@@ -9,7 +9,7 @@ part 'service_api_client.g.dart';
 
 @RestApi()
 abstract class ServiceApiClient {
-  factory ServiceApiClient(Dio dio) = _ServiceApiClient;
+  factory ServiceApiClient(Dio dio, {String? baseUrl}) = _ServiceApiClient;
 
   // ========== SERVICE ENDPOINTS ==========
   @GET('/services')
@@ -25,18 +25,72 @@ abstract class ServiceApiClient {
 
   @GET('/services/{id}')
   Future<ApiResponse<Service>> getServiceById(@Path('id') String id);
+}
 
-  @POST('/services')
-  Future<ApiResponse<Service>> createService(
-    @Body() CreateServiceRequest request,
-  );
+// ========== REQUEST CLASSES ==========
 
-  @PUT('/services/{id}')
-  Future<ApiResponse<Service>> updateService(
-    @Path('id') String id,
-    @Body() UpdateServiceRequest request,
-  );
+@JsonSerializable()
+class CreateServiceRequest {
+  final String title;
+  final String description;
+  final String? shortDescription;
+  final String category;
+  final String? subCategory;
+  final List<String>? tags;
+  final ServicePricing? pricing;
+  final List<ServiceImage>? images;
+  final List<String>? features;
+  final bool featured;
 
-  @DELETE('/services/{id}')
-  Future<ApiResponse<String>> deleteService(@Path('id') String id);
+  const CreateServiceRequest({
+    required this.title,
+    required this.description,
+    this.shortDescription,
+    required this.category,
+    this.subCategory,
+    this.tags,
+    this.pricing,
+    this.images,
+    this.features,
+    this.featured = false,
+  });
+
+  factory CreateServiceRequest.fromJson(Map<String, dynamic> json) =>
+      _$CreateServiceRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CreateServiceRequestToJson(this);
+}
+
+@JsonSerializable()
+class UpdateServiceRequest {
+  final String? title;
+  final String? description;
+  final String? shortDescription;
+  final String? category;
+  final String? subCategory;
+  final List<String>? tags;
+  final ServicePricing? pricing;
+  final List<ServiceImage>? images;
+  final List<String>? features;
+  final bool? featured;
+  final String? status;
+
+  const UpdateServiceRequest({
+    this.title,
+    this.description,
+    this.shortDescription,
+    this.category,
+    this.subCategory,
+    this.tags,
+    this.pricing,
+    this.images,
+    this.features,
+    this.featured,
+    this.status,
+  });
+
+  factory UpdateServiceRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateServiceRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$UpdateServiceRequestToJson(this);
 }

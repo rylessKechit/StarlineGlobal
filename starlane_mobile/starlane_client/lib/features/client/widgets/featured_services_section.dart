@@ -1,203 +1,91 @@
-// Path: starlane_mobile/starlane_client/lib/features/client/widgets/featured_services_section.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
+// Core imports
 import '../../../core/theme/starlane_colors.dart';
 import '../../../shared/widgets/starlane_widgets.dart';
 import '../../../data/models/service.dart';
+import '../repositories/service_repository.dart';
 import '../bloc/service_bloc.dart';
 
 class FeaturedServicesSection extends StatelessWidget {
-  final Function(String serviceId) onServiceTap;
+  final Function(Service)? onServiceTap;
 
   const FeaturedServicesSection({
     super.key,
-    required this.onServiceTap,
+    this.onServiceTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
+    return BlocProvider(
+      create: (context) => ServiceBloc(
+        serviceRepository: context.read<ServiceRepository>(),
+      )..add(ServiceFeaturedLoadRequested()),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Services Phares',
-                    style: TextStyle(
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.bold,
-                      color: StarlaneColors.navy900,
-                    ),
-                  ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    'Nos services les plus demandés',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: StarlaneColors.gray600,
-                    ),
-                  ),
-                ],
-              ),
-              TextButton(
-                onPressed: () {
-                  // TODO: Navigation vers tous les services
-                },
-                child: Text(
-                  'Voir tout',
+          // En-tête de section
+          Padding(
+            padding: EdgeInsets.fromLTRB(24.w, 32.h, 24.w, 20.h),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.star_rounded,
+                  color: StarlaneColors.gold600,
+                  size: 24.sp,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'Services Premium',
                   style: TextStyle(
-                    color: StarlaneColors.gold600,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.bold,
+                    color: StarlaneColors.navy900,
                   ),
                 ),
-              ),
-            ],
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    // TODO: Navigation vers ServicesScreen
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Navigation vers Services - À implémenter'),
+                        backgroundColor: StarlaneColors.gold600,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'Voir tous',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: StarlaneColors.gold600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           
-          SizedBox(height: 16.h),
-          
-          // BlocBuilder pour les Services au lieu des Activities
+          // Liste des services
           BlocBuilder<ServiceBloc, ServiceState>(
             builder: (context, state) {
               if (state is ServiceLoading) {
-                return Container(
-                  height: 200.h,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        StarlaneColors.gold500,
-                      ),
-                    ),
-                  ),
-                );
-              }
-              
-              if (state is ServiceError) {
-                return Container(
-                  height: 120.h,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: StarlaneColors.red500,
-                          size: 32.sp,
-                        ),
-                        SizedBox(height: 8.h),
-                        Text(
-                          'Erreur lors du chargement',
-                          style: TextStyle(
-                            color: StarlaneColors.red500,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          state.message,
-                          style: TextStyle(
-                            color: StarlaneColors.red400,
-                            fontSize: 10.sp,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 8.h),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.read<ServiceBloc>()
-                                .add(ServiceFeaturedLoadRequested());
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: StarlaneColors.gold500,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 16.w, 
-                              vertical: 8.h,
-                            ),
-                          ),
-                          child: Text(
-                            'Réessayer',
-                            style: TextStyle(
-                              color: StarlaneColors.white,
-                              fontSize: 12.sp,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              
-              if (state is ServiceFeaturedLoaded) {
-                final featuredServices = state.services;
-                
-                if (featuredServices.isEmpty) {
-                  return Container(
-                    height: 100.h,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            color: StarlaneColors.gray400,
-                            size: 32.sp,
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Aucun service phare disponible',
-                            style: TextStyle(
-                              color: StarlaneColors.gray600,
-                              fontSize: 14.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+                return _buildLoadingState();
+              } else if (state is ServiceFeaturedLoaded) {
+                if (state.services.isEmpty) {
+                  return _buildEmptyState();
                 }
-                
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  itemCount: featuredServices.length,
-                  itemBuilder: (context, index) {
-                    final service = featuredServices[index];
-                    return Container(
-                      margin: EdgeInsets.only(bottom: 8.h),
-                      child: _buildServiceCard(service),
-                    );
-                  },
-                );
+                return _buildServicesList(state.services);
+              } else if (state is ServiceError) {
+                return _buildErrorState();
               }
               
-              // État par défaut - charge les données
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                context.read<ServiceBloc>()
-                    .add(ServiceFeaturedLoadRequested());
-              });
-              
-              return Container(
-                height: 200.h,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      StarlaneColors.gold500,
-                    ),
-                  ),
-                ),
-              );
+              return _buildEmptyState();
             },
           ),
         ],
@@ -205,150 +93,393 @@ class FeaturedServicesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceCard(Service service) {
-    // Icône selon la catégorie
-    IconData getIconForCategory(ServiceCategory category) {
-      switch (category) {
-        case ServiceCategory.airTravel:
-          return Icons.flight;
-        case ServiceCategory.transport:
-          return Icons.directions_car;
-        case ServiceCategory.realEstate:
-          return Icons.home;
-        case ServiceCategory.corporate:
-          return Icons.business;
-      }
-    }
+  Widget _buildLoadingState() {
+    return SizedBox(
+      height: 280.h,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        itemCount: 3,
+        itemBuilder: (context, index) {
+          return Container(
+            width: 250.w,
+            margin: EdgeInsets.only(right: 16.w),
+            decoration: BoxDecoration(
+              color: StarlaneColors.gray100,
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: StarlaneShimmer(),
+          );
+        },
+      ),
+    );
+  }
 
-    // Couleur selon la catégorie
-    Color getColorForCategory(ServiceCategory category) {
-      switch (category) {
-        case ServiceCategory.airTravel:
-          return StarlaneColors.blue500;
-        case ServiceCategory.transport:
-          return StarlaneColors.emerald500;
-        case ServiceCategory.realEstate:
-          return StarlaneColors.purple500;
-        case ServiceCategory.corporate:
-          return StarlaneColors.orange500;
-      }
-    }
-
-    return InkWell(
-      onTap: () => onServiceTap(service.id),
-      borderRadius: BorderRadius.circular(16.r),
-      child: Container(
-        decoration: BoxDecoration(
-          color: StarlaneColors.white,
-          borderRadius: BorderRadius.circular(16.r),
-          boxShadow: [
-            BoxShadow(
-              color: StarlaneColors.black.withOpacity(0.08),
-              blurRadius: 12.r,
-              offset: Offset(0, 4.h),
+  Widget _buildEmptyState() {
+    return Container(
+      height: 200.h,
+      margin: EdgeInsets.symmetric(horizontal: 24.w),
+      decoration: BoxDecoration(
+        color: StarlaneColors.gray50,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: StarlaneColors.gray200,
+          width: 1,
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.miscellaneous_services_outlined,
+              size: 48.sp,
+              color: StarlaneColors.textSecondary,
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              'Services bientôt disponibles',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w500,
+                color: StarlaneColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              'Nos services premium arrivent prochainement',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: StarlaneColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
-        child: Padding(
-          padding: EdgeInsets.all(20.w),
-          child: Row(
-            children: [
-              // Icône du service
-              Container(
-                width: 60.w,
-                height: 60.w,
-                decoration: BoxDecoration(
-                  color: getColorForCategory(service.category).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16.r),
-                ),
-                child: Icon(
-                  getIconForCategory(service.category),
-                  color: getColorForCategory(service.category),
-                  size: 28.sp,
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      height: 200.h,
+      margin: EdgeInsets.symmetric(horizontal: 24.w),
+      decoration: BoxDecoration(
+        color: StarlaneColors.error.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: StarlaneColors.error.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48.sp,
+              color: StarlaneColors.error,
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              'Erreur de chargement',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w500,
+                color: StarlaneColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              'Impossible de charger les services',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: StarlaneColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServicesList(List<Service> services) {
+    return SizedBox(
+      height: 280.h,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        itemCount: services.length,
+        itemBuilder: (context, index) {
+          final service = services[index];
+          return _buildServiceCard(service);
+        },
+      ),
+    );
+  }
+
+  Widget _buildServiceCard(Service service) {
+    return Container(
+      width: 250.w,
+      margin: EdgeInsets.only(right: 16.w),
+      decoration: BoxDecoration(
+        color: StarlaneColors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: StarlaneColors.gray200,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: StarlaneColors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => onServiceTap?.call(service),
+        borderRadius: BorderRadius.circular(16.r),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image du service
+            Container(
+              height: 120.h,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(16.r),
                 ),
               ),
-              
-              SizedBox(width: 16.w),
-              
-              // Informations du service
-              Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(16.r),
+                ),
+                child: _buildServiceImage(service),
+              ),
+            ),
+            
+            // Contenu
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(16.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      service.name,
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: StarlaneColors.navy900,
+                    // Badge catégorie
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    
-                    SizedBox(height: 4.h),
-                    
-                    Text(
-                      service.displayDescription,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        color: StarlaneColors.gray600,
-                        height: 1.3,
+                      decoration: BoxDecoration(
+                        color: getColorForServiceCategory(service.category).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6.r),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            getIconForServiceCategory(service.category),
+                            size: 12.sp,
+                            color: getColorForServiceCategory(service.category),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            getServiceCategoryDisplayName(service.category),
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: getColorForServiceCategory(service.category),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     
                     SizedBox(height: 8.h),
                     
+                    // Nom du service
+                    Expanded(
+                      child: Text(
+                        service.title, // CORRIGÉ - utilisation de title au lieu de name
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                          color: StarlaneColors.navy900,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    
+                    SizedBox(height: 8.h),
+                    
+                    // Description
+                    if (service.shortDescription != null) // CORRIGÉ - utilisation de shortDescription
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          service.shortDescription!,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: StarlaneColors.textSecondary,
+                            height: 1.3,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    
+                    SizedBox(height: 12.h),
+                    
+                    // Prix et statut
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Catégorie
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8.w,
-                            vertical: 4.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: getColorForCategory(service.category).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Text(
-                            service.category.displayName,
-                            style: TextStyle(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w600,
-                              color: getColorForCategory(service.category),
+                        if (service.pricing != null && service.pricing!.basePrice > 0)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 4.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: StarlaneColors.gold100,
+                              borderRadius: BorderRadius.circular(6.r),
+                            ),
+                            child: Text(
+                              '${service.pricing!.basePrice.toStringAsFixed(0)} ${_getCurrencySymbol(service.pricing!.currency)}', // CORRIGÉ - prix formaté manuellement
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w600,
+                                color: StarlaneColors.gold700,
+                              ),
                             ),
                           ),
-                        ),
                         
-                        // Prix
-                        Text(
-                          service.formattedPrice,
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.bold,
-                            color: StarlaneColors.gold600,
-                          ),
+                        const Spacer(),
+                        
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 12.sp,
+                          color: StarlaneColors.textSecondary,
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              
-              // Flèche
-              Icon(
-                Icons.arrow_forward_ios,
-                color: StarlaneColors.gray400,
-                size: 14.sp,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildServiceImage(Service service) {
+    if (service.images != null && service.images!.isNotEmpty) {
+      final primaryImage = service.images!.firstWhere(
+        (img) => img.isPrimary,
+        orElse: () => service.images!.first,
+      );
+      
+      return CachedNetworkImage(
+        imageUrl: primaryImage.url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        placeholder: (context, url) => Container(
+          color: StarlaneColors.gray100,
+          child: StarlaneShimmer(),
+        ),
+        errorWidget: (context, url, error) => _buildDefaultServiceImage(service.category),
+      );
+    } else {
+      return _buildDefaultServiceImage(service.category);
+    }
+  }
+
+  Widget _buildDefaultServiceImage(String category) {
+    return Container(
+      color: getColorForServiceCategory(category).withOpacity(0.1),
+      child: Center(
+        child: Icon(
+          getIconForServiceCategory(category),
+          size: 32.sp,
+          color: getColorForServiceCategory(category),
+        ),
+      ),
+    );
+  }
+
+  // HELPER METHODS CORRIGES - travaillent avec String au lieu d'enum
+  IconData getIconForServiceCategory(String category) {
+    switch (category) {
+      case 'concierge':
+        return Icons.support_agent_outlined;
+      case 'luxury':
+        return Icons.diamond_outlined;
+      case 'travel':
+        return Icons.travel_explore_outlined;
+      case 'lifestyle':
+        return Icons.spa_outlined;
+      case 'business':
+        return Icons.business_center_outlined;
+      case 'security':
+        return Icons.security_outlined;
+      default:
+        return Icons.miscellaneous_services_outlined;
+    }
+  }
+
+  Color getColorForServiceCategory(String category) {
+    switch (category) {
+      case 'concierge':
+        return StarlaneColors.gold600;
+      case 'luxury':
+        return StarlaneColors.purple600;
+      case 'travel':
+        return StarlaneColors.navy600;
+      case 'lifestyle':
+        return StarlaneColors.emerald600;
+      case 'business':
+        return StarlaneColors.gray700;
+      case 'security':
+        return StarlaneColors.error;
+      default:
+        return StarlaneColors.primary;
+    }
+  }
+
+  String getServiceCategoryDisplayName(String category) {
+    switch (category) {
+      case 'concierge':
+        return 'Conciergerie';
+      case 'luxury':
+        return 'Luxe';
+      case 'travel':
+        return 'Voyage';
+      case 'lifestyle':
+        return 'Lifestyle';
+      case 'business':
+        return 'Business';
+      case 'security':
+        return 'Sécurité';
+      default:
+        return 'Service';
+    }
+  }
+
+  String _getCurrencySymbol(String currency) {
+    switch (currency) {
+      case 'EUR':
+        return '€';
+      case 'USD':
+        return '\$';
+      case 'GBP':
+        return '£';
+      default:
+        return currency;
+    }
   }
 }

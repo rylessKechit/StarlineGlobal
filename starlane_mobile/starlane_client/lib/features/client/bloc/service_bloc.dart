@@ -1,31 +1,141 @@
-// Path: starlane_mobile/starlane_client/lib/features/client/bloc/service_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 
-// ✅ AJOUT DE L'IMPORT MANQUANT POUR ApiException
-import '../../../data/api/api_client.dart';
 import '../../../data/models/service.dart';
 import '../repositories/service_repository.dart';
 
-part 'service_event.dart';
-part 'service_state.dart';
+// Events
+abstract class ServiceEvent extends Equatable {
+  const ServiceEvent();
+  
+  @override
+  List<Object?> get props => [];
+}
 
+class ServiceLoadRequested extends ServiceEvent {
+  final int page;
+  final int limit;
+  final String? category;
+  final String? search;
+  final String? sortBy;
+  
+  const ServiceLoadRequested({
+    this.page = 1,
+    this.limit = 20,
+    this.category,
+    this.search,
+    this.sortBy,
+  });
+  
+  @override
+  List<Object?> get props => [page, limit, category, search, sortBy];
+}
+
+class ServiceFeaturedLoadRequested extends ServiceEvent {}
+
+class ServiceSearchRequested extends ServiceEvent {
+  final String query;
+  final String? category;
+  final String? sortBy;
+  
+  const ServiceSearchRequested({
+    required this.query,
+    this.category,
+    this.sortBy,
+  });
+  
+  @override
+  List<Object?> get props => [query, category, sortBy];
+}
+
+class ServiceFilterChanged extends ServiceEvent {
+  final String? category;
+  final String? search;
+  final String? sortBy;
+  
+  const ServiceFilterChanged({
+    this.category,
+    this.search,
+    this.sortBy,
+  });
+  
+  @override
+  List<Object?> get props => [category, search, sortBy];
+}
+
+class ServiceRefreshRequested extends ServiceEvent {
+  final String? category;
+  final String? search;
+  final String? sortBy;
+  
+  const ServiceRefreshRequested({
+    this.category,
+    this.search,
+    this.sortBy,
+  });
+  
+  @override
+  List<Object?> get props => [category, search, sortBy];
+}
+
+// States
+abstract class ServiceState extends Equatable {
+  const ServiceState();
+  
+  @override
+  List<Object?> get props => [];
+}
+
+class ServiceInitial extends ServiceState {}
+
+class ServiceLoading extends ServiceState {}
+
+class ServiceLoaded extends ServiceState {
+  final List<Service> services;
+  final bool hasReachedMax;
+  
+  const ServiceLoaded({
+    required this.services,
+    this.hasReachedMax = false,
+  });
+  
+  @override
+  List<Object?> get props => [services, hasReachedMax];
+}
+
+class ServiceFeaturedLoaded extends ServiceState {
+  final List<Service> services;
+  
+  const ServiceFeaturedLoaded({required this.services});
+  
+  @override
+  List<Object?> get props => [services];
+}
+
+class ServiceError extends ServiceState {
+  final String message;
+  
+  const ServiceError({required this.message});
+  
+  @override
+  List<Object?> get props => [message];
+}
+
+// Bloc
 class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
   final ServiceRepository _serviceRepository;
-
+  
   ServiceBloc({required ServiceRepository serviceRepository})
       : _serviceRepository = serviceRepository,
         super(ServiceInitial()) {
-    
-    on<ServiceLoadRequested>(_onServiceLoadRequested);
-    on<ServiceFeaturedLoadRequested>(_onServiceFeaturedLoadRequested);
-    on<ServiceDetailLoadRequested>(_onServiceDetailLoadRequested);
-    on<ServiceCreateRequested>(_onServiceCreateRequested);
-    on<ServiceUpdateRequested>(_onServiceUpdateRequested);
-    on<ServiceDeleteRequested>(_onServiceDeleteRequested);
+    on<ServiceLoadRequested>(_onLoadRequested);
+    on<ServiceFeaturedLoadRequested>(_onFeaturedLoadRequested);
+    on<ServiceSearchRequested>(_onSearchRequested);
+    on<ServiceFilterChanged>(_onFilterChanged);
+    on<ServiceRefreshRequested>(_onRefreshRequested);
   }
 
-  Future<void> _onServiceLoadRequested(
+  Future<void> _onLoadRequested(
     ServiceLoadRequested event,
     Emitter<ServiceState> emit,
   ) async {
@@ -36,20 +146,20 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
         page: event.page,
         limit: event.limit,
         category: event.category,
-        featured: event.featured,
+        search: event.search,
+        sortBy: event.sortBy,
       );
       
-      emit(ServiceLoaded(services: services));
-    } catch (e) {
-      emit(ServiceError(
-        message: _getErrorMessage(e),
-        // ✅ CORRIGÉ: ApiException est maintenant reconnu
-        errors: e is ApiException ? e.errors : null,
+      emit(ServiceLoaded(
+        services: services,
+        hasReachedMax: services.length < event.limit,
       ));
+    } catch (e) {
+      emit(ServiceError(message: e.toString()));
     }
   }
 
-  Future<void> _onServiceFeaturedLoadRequested(
+  Future<void> _onFeaturedLoadRequested(
     ServiceFeaturedLoadRequested event,
     Emitter<ServiceState> emit,
   ) async {
@@ -57,95 +167,74 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
     
     try {
       final featuredServices = await _serviceRepository.getFeaturedServices();
+      
       emit(ServiceFeaturedLoaded(services: featuredServices));
     } catch (e) {
-      emit(ServiceError(
-        message: _getErrorMessage(e),
-        // ✅ CORRIGÉ: ApiException est maintenant reconnu
-        errors: e is ApiException ? e.errors : null,
-      ));
+      emit(ServiceError(message: e.toString()));
     }
   }
 
-  Future<void> _onServiceDetailLoadRequested(
-    ServiceDetailLoadRequested event,
+  Future<void> _onSearchRequested(
+    ServiceSearchRequested event,
     Emitter<ServiceState> emit,
   ) async {
     emit(ServiceLoading());
     
     try {
-      final service = await _serviceRepository.getServiceById(event.serviceId);
-      emit(ServiceDetailLoaded(service: service));
-    } catch (e) {
-      emit(ServiceError(
-        message: _getErrorMessage(e),
-        // ✅ CORRIGÉ: ApiException est maintenant reconnu
-        errors: e is ApiException ? e.errors : null,
-      ));
-    }
-  }
-
-  Future<void> _onServiceCreateRequested(
-    ServiceCreateRequested event,
-    Emitter<ServiceState> emit,
-  ) async {
-    emit(ServiceLoading());
-    
-    try {
-      final createdService = await _serviceRepository.createService(event.request);
-      emit(ServiceCreateSuccess(service: createdService));
-    } catch (e) {
-      emit(ServiceError(
-        message: _getErrorMessage(e),
-        // ✅ CORRIGÉ: ApiException est maintenant reconnu
-        errors: e is ApiException ? e.errors : null,
-      ));
-    }
-  }
-
-  Future<void> _onServiceUpdateRequested(
-    ServiceUpdateRequested event,
-    Emitter<ServiceState> emit,
-  ) async {
-    emit(ServiceLoading());
-    
-    try {
-      final updatedService = await _serviceRepository.updateService(
-        event.serviceId,
-        event.request,
+      final services = await _serviceRepository.getServices(
+        search: event.query,
+        category: event.category,
+        sortBy: event.sortBy,
       );
-      emit(ServiceUpdateSuccess(service: updatedService));
-    } catch (e) {
-      emit(ServiceError(
-        message: _getErrorMessage(e),
-        // ✅ CORRIGÉ: ApiException est maintenant reconnu
-        errors: e is ApiException ? e.errors : null,
+      
+      emit(ServiceLoaded(
+        services: services,
+        hasReachedMax: true,
       ));
+    } catch (e) {
+      emit(ServiceError(message: e.toString()));
     }
   }
 
-  Future<void> _onServiceDeleteRequested(
-    ServiceDeleteRequested event,
+  Future<void> _onFilterChanged(
+    ServiceFilterChanged event,
     Emitter<ServiceState> emit,
   ) async {
     emit(ServiceLoading());
     
     try {
-      await _serviceRepository.deleteService(event.serviceId);
-      emit(ServiceDeleteSuccess(serviceId: event.serviceId));
-    } catch (e) {
-      emit(ServiceError(
-        message: _getErrorMessage(e),
-        // ✅ CORRIGÉ: ApiException est maintenant reconnu
-        errors: e is ApiException ? e.errors : null,
+      final services = await _serviceRepository.getServices(
+        category: event.category,
+        search: event.search,
+        sortBy: event.sortBy,
+      );
+      
+      emit(ServiceLoaded(
+        services: services,
+        hasReachedMax: true,
       ));
+    } catch (e) {
+      emit(ServiceError(message: e.toString()));
     }
   }
 
-  String _getErrorMessage(dynamic error) {
-    if (error is ApiException) {
-      return error.message;
+  Future<void> _onRefreshRequested(
+    ServiceRefreshRequested event,
+    Emitter<ServiceState> emit,
+  ) async {
+    try {
+      final services = await _serviceRepository.getServices(
+        category: event.category,
+        search: event.search,
+        sortBy: event.sortBy,
+      );
+      
+      emit(ServiceLoaded(
+        services: services,
+        hasReachedMax: true,
+      ));
+    } catch (e) {
+      emit(ServiceError(message: e.toString()));
     }
-    return error.toString();
   }
 }

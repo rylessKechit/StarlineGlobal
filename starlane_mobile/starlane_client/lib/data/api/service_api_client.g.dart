@@ -3,6 +3,84 @@
 part of 'service_api_client.dart';
 
 // **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+CreateServiceRequest _$CreateServiceRequestFromJson(
+        Map<String, dynamic> json) =>
+    CreateServiceRequest(
+      title: json['title'] as String,
+      description: json['description'] as String,
+      shortDescription: json['shortDescription'] as String?,
+      category: json['category'] as String,
+      subCategory: json['subCategory'] as String?,
+      tags: (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      pricing: json['pricing'] == null
+          ? null
+          : ServicePricing.fromJson(json['pricing'] as Map<String, dynamic>),
+      images: (json['images'] as List<dynamic>?)
+          ?.map((e) => ServiceImage.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      features: (json['features'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      featured: json['featured'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$CreateServiceRequestToJson(
+        CreateServiceRequest instance) =>
+    <String, dynamic>{
+      'title': instance.title,
+      'description': instance.description,
+      'shortDescription': instance.shortDescription,
+      'category': instance.category,
+      'subCategory': instance.subCategory,
+      'tags': instance.tags,
+      'pricing': instance.pricing,
+      'images': instance.images,
+      'features': instance.features,
+      'featured': instance.featured,
+    };
+
+UpdateServiceRequest _$UpdateServiceRequestFromJson(
+        Map<String, dynamic> json) =>
+    UpdateServiceRequest(
+      title: json['title'] as String?,
+      description: json['description'] as String?,
+      shortDescription: json['shortDescription'] as String?,
+      category: json['category'] as String?,
+      subCategory: json['subCategory'] as String?,
+      tags: (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      pricing: json['pricing'] == null
+          ? null
+          : ServicePricing.fromJson(json['pricing'] as Map<String, dynamic>),
+      images: (json['images'] as List<dynamic>?)
+          ?.map((e) => ServiceImage.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      features: (json['features'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      featured: json['featured'] as bool?,
+      status: json['status'] as String?,
+    );
+
+Map<String, dynamic> _$UpdateServiceRequestToJson(
+        UpdateServiceRequest instance) =>
+    <String, dynamic>{
+      'title': instance.title,
+      'description': instance.description,
+      'shortDescription': instance.shortDescription,
+      'category': instance.category,
+      'subCategory': instance.subCategory,
+      'tags': instance.tags,
+      'pricing': instance.pricing,
+      'images': instance.images,
+      'features': instance.features,
+      'featured': instance.featured,
+      'status': instance.status,
+    };
+
+// **************************************************************************
 // RetrofitGenerator
 // **************************************************************************
 
@@ -142,120 +220,6 @@ class _ServiceApiClient implements ServiceApiClient {
       _value = ApiResponse<Service>.fromJson(
         _result.data!,
         (json) => Service.fromJson(json as Map<String, dynamic>),
-      );
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    return _value;
-  }
-
-  @override
-  Future<ApiResponse<Service>> createService(
-      CreateServiceRequest request) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    final _data = <String, dynamic>{};
-    _data.addAll(request.toJson());
-    final _options = _setStreamType<ApiResponse<Service>>(Options(
-      method: 'POST',
-      headers: _headers,
-      extra: _extra,
-    )
-        .compose(
-          _dio.options,
-          '/services',
-          queryParameters: queryParameters,
-          data: _data,
-        )
-        .copyWith(
-            baseUrl: _combineBaseUrls(
-          _dio.options.baseUrl,
-          baseUrl,
-        )));
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late ApiResponse<Service> _value;
-    try {
-      _value = ApiResponse<Service>.fromJson(
-        _result.data!,
-        (json) => Service.fromJson(json as Map<String, dynamic>),
-      );
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    return _value;
-  }
-
-  @override
-  Future<ApiResponse<Service>> updateService(
-    String id,
-    UpdateServiceRequest request,
-  ) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    final _data = <String, dynamic>{};
-    _data.addAll(request.toJson());
-    final _options = _setStreamType<ApiResponse<Service>>(Options(
-      method: 'PUT',
-      headers: _headers,
-      extra: _extra,
-    )
-        .compose(
-          _dio.options,
-          '/services/${id}',
-          queryParameters: queryParameters,
-          data: _data,
-        )
-        .copyWith(
-            baseUrl: _combineBaseUrls(
-          _dio.options.baseUrl,
-          baseUrl,
-        )));
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late ApiResponse<Service> _value;
-    try {
-      _value = ApiResponse<Service>.fromJson(
-        _result.data!,
-        (json) => Service.fromJson(json as Map<String, dynamic>),
-      );
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    return _value;
-  }
-
-  @override
-  Future<ApiResponse<String>> deleteService(String id) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<ApiResponse<String>>(Options(
-      method: 'DELETE',
-      headers: _headers,
-      extra: _extra,
-    )
-        .compose(
-          _dio.options,
-          '/services/${id}',
-          queryParameters: queryParameters,
-          data: _data,
-        )
-        .copyWith(
-            baseUrl: _combineBaseUrls(
-          _dio.options.baseUrl,
-          baseUrl,
-        )));
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late ApiResponse<String> _value;
-    try {
-      _value = ApiResponse<String>.fromJson(
-        _result.data!,
-        (json) => json as String,
       );
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
