@@ -39,49 +39,95 @@ class Service extends Equatable {
 
   factory Service.fromJson(Map<String, dynamic> json) {
     try {
-      // CORRECTION - Adaptation pour votre backend avec gestion robuste des nulls
+      // CORRECTION - Fonction helper pour cast sécurisé en String
+      String? safeStringCast(dynamic value) {
+        if (value == null) return null;
+        return value.toString();
+      }
+      
+      String safeStringCastRequired(dynamic value, String fieldName) {
+        if (value == null) {
+          throw FormatException('Champ requis "$fieldName" est null dans: ${json.keys.toList()}');
+        }
+        return value.toString();
+      }
+
+      // CORRECTION - Validation avec cast sécurisé
+      final String rawId = safeStringCastRequired(json['_id'] ?? json['id'], 'id');
+      final String rawTitle = safeStringCastRequired(json['name'] ?? json['title'], 'name/title');
+
+      // CORRECTION - Gestion robuste des dates avec fallback
+      DateTime parseDateTime(dynamic dateValue) {
+        if (dateValue == null) return DateTime.now();
+        try {
+          return DateTime.parse(dateValue.toString());
+        } catch (e) {
+          print('⚠️ Date invalide: $dateValue, utilisation de DateTime.now()');
+          return DateTime.now();
+        }
+      }
+
+      // CORRECTION - Parsing sécurisé des listes
+      List<String>? parseStringList(dynamic listValue) {
+        if (listValue == null) return null;
+        if (listValue is! List) return null;
+        try {
+          return listValue.map((e) => e?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+        } catch (e) {
+          print('⚠️ Erreur parsing liste: $e');
+          return null;
+        }
+      }
+
+      // CORRECTION - Parsing sécurisé des images
+      List<ServiceImage>? parseImageList(dynamic imageValue) {
+        if (imageValue == null) return null;
+        if (imageValue is! List) return null;
+        try {
+          return imageValue
+              .map((img) {
+                try {
+                  return ServiceImage.fromJson(img as Map<String, dynamic>);
+                } catch (e) {
+                  print('⚠️ Image invalide ignorée: $e');
+                  return null;
+                }
+              })
+              .where((img) => img != null)
+              .cast<ServiceImage>()
+              .toList();
+        } catch (e) {
+          print('⚠️ Erreur parsing images: $e');
+          return null;
+        }
+      }
+
       return Service(
-        id: (json['_id'] ?? json['id'] ?? '').toString(),
-        title: (json['name'] ?? json['title'] ?? 'Service sans nom').toString(),
-        description: (json['description'] ?? '').toString(),
-        shortDescription: json['shortDescription']?.toString(),
-        category: (json['category'] ?? 'default').toString(),
-        subCategory: json['subCategory']?.toString(),
-        tags: json['tags'] != null 
-            ? (json['tags'] as List).map((e) => e.toString()).toList()
-            : null,
+        id: rawId,
+        title: rawTitle,
+        description: safeStringCast(json['description']) ?? '',
+        shortDescription: safeStringCast(json['shortDescription']),
+        category: safeStringCast(json['category']) ?? 'default',
+        subCategory: safeStringCast(json['subCategory']),
+        tags: parseStringList(json['tags']),
         pricing: json['pricing'] != null
             ? ServicePricing.fromJson(json['pricing'] as Map<String, dynamic>)
             : null,
-        images: json['images'] != null
-            ? (json['images'] as List)
-                .map((img) => ServiceImage.fromJson(img as Map<String, dynamic>))
-                .toList()
-            : null,
-        features: json['features'] != null
-            ? (json['features'] as List).map((e) => e.toString()).toList()
-            : json['included'] != null
-                ? (json['included'] as List).map((e) => e.toString()).toList()
-                : null,
+        images: parseImageList(json['images']),
+        features: parseStringList(json['features']) ?? parseStringList(json['included']),
         featured: json['isFeatured'] == true || json['featured'] == true,
         status: (json['isActive'] == true || json['status'] == 'active') ? 'active' : 'inactive',
-        createdAt: DateTime.parse((json['createdAt'] ?? DateTime.now().toIso8601String()).toString()),
-        updatedAt: DateTime.parse((json['updatedAt'] ?? DateTime.now().toIso8601String()).toString()),
+        createdAt: parseDateTime(json['createdAt']),
+        updatedAt: parseDateTime(json['updatedAt']),
       );
     } catch (e) {
-      print('🔍 ERREUR Service.fromJson: $e');
-      print('🔍 JSON problématique: $json');
-      // Retour d'un service par défaut en cas d'erreur
-      return Service(
-        id: (json['_id'] ?? json['id'] ?? 'unknown').toString(),
-        title: 'Service indisponible',
-        description: 'Erreur lors du chargement du service',
-        category: 'default',
-        featured: false,
-        status: 'inactive',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      // AMÉLIORATION - Logging détaillé ET relancement de l'erreur
+      print('🚨 ERREUR Service.fromJson: $e');
+      print('📋 JSON reçu: $json');
+      print('📋 Clés disponibles: ${json.keys.toList()}');
+      
+      // Relancer l'erreur pour que le repository puisse la gérer
+      rethrow;
     }
   }
 
@@ -138,6 +184,43 @@ class Service extends Equatable {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  // AJOUT - Méthodes utilitaires pour l'UI
+  String get primaryImageUrl {
+    if (images != null && images!.isNotEmpty) {
+      // Chercher l'image primaire en premier
+      final primaryImage = images!.firstWhere(
+        (img) => img.isPrimary,
+        orElse: () => images!.first,
+      );
+      return primaryImage.url;
+    }
+    return 'https://via.placeholder.com/400x200?text=Service+Image'; // Placeholder
+  }
+
+  String get formattedPrice {
+    if (pricing == null) return 'Prix sur demande';
+    
+    final symbols = {'EUR': '€', 'USD': '\$', 'GBP': '£'};
+    final symbol = symbols[pricing!.currency] ?? pricing!.currency;
+    
+    String suffix = '';
+    switch (pricing!.priceType) {
+      case 'per_hour':
+        suffix = '/h';
+        break;
+      case 'per_day':
+        suffix = '/jour';
+        break;
+      case 'fixed':
+        suffix = '';
+        break;
+    }
+    
+    return '${pricing!.basePrice.toStringAsFixed(0)}$symbol$suffix';
+  }
+
+  bool get isActive => status == 'active';
 }
 
 @JsonSerializable()
@@ -154,8 +237,24 @@ class ServicePricing extends Equatable {
     this.priceType,
   });
 
-  factory ServicePricing.fromJson(Map<String, dynamic> json) =>
-      _$ServicePricingFromJson(json);
+  factory ServicePricing.fromJson(Map<String, dynamic> json) {
+    try {
+      return ServicePricing(
+        basePrice: (json['basePrice'] as num?)?.toDouble() ?? 0.0,
+        currency: json['currency']?.toString() ?? 'EUR',
+        unit: json['unit']?.toString(),
+        priceType: json['priceType']?.toString(),
+      );
+    } catch (e) {
+      print('🚨 Erreur ServicePricing.fromJson: $e');
+      print('📋 JSON: $json');
+      // Retourner une valeur par défaut au lieu de crasher
+      return const ServicePricing(
+        basePrice: 0.0,
+        currency: 'EUR',
+      );
+    }
+  }
 
   Map<String, dynamic> toJson() => _$ServicePricingToJson(this);
 
@@ -175,8 +274,24 @@ class ServiceImage extends Equatable {
     this.isPrimary = false,
   });
 
-  factory ServiceImage.fromJson(Map<String, dynamic> json) =>
-      _$ServiceImageFromJson(json);
+  factory ServiceImage.fromJson(Map<String, dynamic> json) {
+    try {
+      final String imageUrl = json['url']?.toString() ?? '';
+      if (imageUrl.isEmpty) {
+        throw FormatException('URL d\'image manquante');
+      }
+      
+      return ServiceImage(
+        url: imageUrl,
+        alt: json['alt']?.toString(),
+        isPrimary: json['isPrimary'] == true,
+      );
+    } catch (e) {
+      print('🚨 Erreur ServiceImage.fromJson: $e');
+      print('📋 JSON: $json');
+      rethrow;
+    }
+  }
 
   Map<String, dynamic> toJson() => _$ServiceImageToJson(this);
 
@@ -200,6 +315,12 @@ enum ServiceCategory {
   security,
   @JsonValue('airTravel') // AJOUTÉ pour votre backend
   airTravel,
+  @JsonValue('transport')
+  transport,
+  @JsonValue('realEstate')
+  realEstate,
+  @JsonValue('corporate')
+  corporate,
 }
 
 // Enum pour les statuts de services
@@ -230,6 +351,12 @@ extension ServiceCategoryExtension on ServiceCategory {
         return 'Sécurité';
       case ServiceCategory.airTravel:
         return 'Aviation Privée';
+      case ServiceCategory.transport:
+        return 'Transport VIP';
+      case ServiceCategory.realEstate:
+        return 'Immobilier Premium';
+      case ServiceCategory.corporate:
+        return 'Corporate';
     }
   }
 
@@ -249,6 +376,12 @@ extension ServiceCategoryExtension on ServiceCategory {
         return 'security';
       case ServiceCategory.airTravel:
         return 'airTravel';
+      case ServiceCategory.transport:
+        return 'transport';
+      case ServiceCategory.realEstate:
+        return 'realEstate';
+      case ServiceCategory.corporate:
+        return 'corporate';
     }
   }
 }

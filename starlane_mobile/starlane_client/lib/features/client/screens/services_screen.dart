@@ -7,193 +7,399 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/starlane_colors.dart';
 import '../../../shared/widgets/starlane_widgets.dart';
 import '../../../data/models/service.dart';
-import '../repositories/service_repository.dart';
+
+// Bloc et repository
 import '../bloc/service_bloc.dart';
+import '../repositories/service_repository.dart';
 
-class ServicesScreen extends StatelessWidget {
-  const ServicesScreen({super.key});
+class ServicesScreen extends StatefulWidget {
+  final String? initialCategory;
+  final String? initialSearch;
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => ServiceBloc(
-        serviceRepository: context.read<ServiceRepository>(),
-      )..add(ServiceLoadRequested()),
-      child: const _ServicesScreenView(),
-    );
-  }
-}
-
-class _ServicesScreenView extends StatefulWidget {
-  const _ServicesScreenView();
+  const ServicesScreen({
+    super.key,
+    this.initialCategory,
+    this.initialSearch,
+  });
 
   @override
-  State<_ServicesScreenView> createState() => _ServicesScreenViewState();
+  State<ServicesScreen> createState() => _ServicesScreenState();
 }
 
-class _ServicesScreenViewState extends State<_ServicesScreenView> {
-  final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  bool _isScrolled = false;
-  
+class _ServicesScreenState extends State<ServicesScreen> {
+  late TextEditingController _searchController;
+  late ScrollController _scrollController;
+  late ServiceBloc _serviceBloc;
+
+  String? _selectedCategory;
+  String? _selectedSortBy;
+
+  // Catégories disponibles
+  final List<Map<String, String>> _categories = [
+    {'id': '', 'name': 'Tous', 'icon': 'all'},
+    {'id': 'airTravel', 'name': 'Air Travel', 'icon': 'flight'},
+    {'id': 'transport', 'name': 'Transport', 'icon': 'car'},
+    {'id': 'realEstate', 'name': 'Real Estate', 'icon': 'home'},
+    {'id': 'corporate', 'name': 'Corporate', 'icon': 'business'},
+  ];
+
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController(text: widget.initialSearch);
+    _scrollController = ScrollController();
     
-    // Listener pour sticky header
-    _scrollController.addListener(() {
-      final isScrolled = _scrollController.offset > 50;
-      if (_isScrolled != isScrolled) {
-        setState(() {
-          _isScrolled = isScrolled;
-        });
-      }
+    _serviceBloc = ServiceBloc(
+      serviceRepository: context.read<ServiceRepository>(),
+    );
+    
+    _selectedCategory = widget.initialCategory;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadServices();
     });
+  }
+
+  void _loadServices() {
+    _serviceBloc.add(ServiceLoadRequested(
+      category: _selectedCategory,
+      search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+      sortBy: _selectedSortBy,
+    ));
   }
 
   void _onSearchChanged(String value) {
-    // Recherche avec debounce
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 300), () {
       if (_searchController.text == value) {
-        if (value.isNotEmpty) {
-          context.read<ServiceBloc>().add(ServiceSearchRequested(query: value));
-        } else {
-          context.read<ServiceBloc>().add(ServiceLoadRequested());
-        }
+        _loadServices();
       }
     });
   }
 
-  void _onRefresh() {
-    context.read<ServiceBloc>().add(ServiceLoadRequested());
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (context) => Container(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Filtres et tri',
+                  style: TextStyle(
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.bold,
+                    color: StarlaneColors.navy900,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            SizedBox(height: 24.h),
+            
+            Text(
+              'Trier par',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: StarlaneColors.navy900,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Wrap(
+              spacing: 8.w,
+              children: [
+                _buildFilterChip('Nom', 'title'),
+                _buildFilterChip('Catégorie', 'category'),
+                _buildFilterChip('Date', 'createdAt'),
+              ],
+            ),
+            SizedBox(height: 32.h),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedSortBy = null;
+                      });
+                      Navigator.pop(context);
+                      _loadServices();
+                    },
+                    child: const Text('Réinitialiser'),
+                  ),
+                ),
+                SizedBox(width: 16.w),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _loadServices();
+                    },
+                    child: const Text('Appliquer'),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value) {
+    final isSelected = _selectedSortBy == value;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedSortBy = selected ? value : null;
+        });
+      },
+      selectedColor: StarlaneColors.gold100,
+      checkmarkColor: StarlaneColors.gold600,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: StarlaneColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header avec recherche
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: StarlaneColors.white,
-                boxShadow: _isScrolled 
-                  ? [
-                      BoxShadow(
-                        color: StarlaneColors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
+    return BlocProvider<ServiceBloc>.value(
+      value: _serviceBloc,
+      child: Scaffold(
+        backgroundColor: StarlaneColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: Text(
+            'Services VIP',
+            style: TextStyle(
+              fontSize: 20.sp,
+              fontWeight: FontWeight.bold,
+              color: StarlaneColors.navy900,
+            ),
+          ),
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: StarlaneColors.navy900,
+              size: 20.sp,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(
+                Icons.tune_outlined,
+                color: StarlaneColors.navy900,
+                size: 24.sp,
               ),
-              padding: EdgeInsets.all(20.w),
+              onPressed: _showFilterBottomSheet,
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(120.h),
+            child: Container(
+              color: Colors.white,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Titre avec icône VIP
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8.w),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              StarlaneColors.gold600,
-                              StarlaneColors.gold400,
-                            ],
-                          ),
+                  // Barre de recherche
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      decoration: InputDecoration(
+                        hintText: 'Rechercher un service VIP...',
+                        hintStyle: TextStyle(
+                          color: StarlaneColors.gray400,
+                          fontSize: 14.sp,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: StarlaneColors.gray400,
+                          size: 20.sp,
+                        ),
+                        filled: true,
+                        fillColor: StarlaneColors.gray50,
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: StarlaneColors.gold600.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          borderSide: BorderSide.none,
                         ),
-                        child: Icon(
-                          Icons.diamond, // ICÔNE VIP/PREMIUM
-                          color: StarlaneColors.white,
-                          size: 24.sp,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 12.h,
                         ),
                       ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Services VIP',
-                              style: TextStyle(
-                                fontSize: 24.sp,
-                                fontWeight: FontWeight.bold,
-                                color: StarlaneColors.navy900,
-                              ),
-                            ),
-                            Text(
-                              'Excellence & Luxe',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w500,
-                                color: StarlaneColors.gold600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  SizedBox(height: 8.h),
-                  
-                  // Sous-titre
-                  Text(
-                    'Découvrez nos services d\'exception Starlane Global',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      color: StarlaneColors.textSecondary,
                     ),
                   ),
                   
-                  SizedBox(height: 20.h),
-                  
-                  // Barre de recherche
-                  StarlaneTextField(
-                    controller: _searchController,
-                    hintText: 'Rechercher un service VIP...',
-                    prefixIcon: Icons.search,
-                    onChanged: _onSearchChanged,
+                  // Catégories horizontales (comme sur home_screen)
+                  Container(
+                    height: 80.h,
+                    margin: EdgeInsets.only(bottom: 8.h),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      itemCount: _categories.length,
+                      itemBuilder: (context, index) {
+                        final category = _categories[index];
+                        final isSelected = _selectedCategory == category['id'] || 
+                                         (_selectedCategory == null && index == 0);
+                        
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = category['id']!.isEmpty ? null : category['id'];
+                            });
+                            _loadServices();
+                          },
+                          child: Container(
+                            width: 80.w,
+                            margin: EdgeInsets.only(right: 12.w),
+                            child: Column(
+                              children: [
+                                // Icône de catégorie
+                                Container(
+                                  width: 50.w,
+                                  height: 50.h,
+                                  decoration: BoxDecoration(
+                                    color: isSelected 
+                                        ? _getCategoryColor(category['id']!)
+                                        : _getCategoryColor(category['id']!).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Icon(
+                                    _getCategoryIconData(category['id']!),
+                                    color: isSelected 
+                                        ? Colors.white 
+                                        : _getCategoryColor(category['id']!),
+                                    size: 24.sp,
+                                  ),
+                                ),
+                                SizedBox(height: 6.h),
+                                // Nom de catégorie
+                                Text(
+                                  category['name']!,
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    color: isSelected 
+                                        ? _getCategoryColor(category['id']!) 
+                                        : StarlaneColors.gray600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
             ),
+          ),
+        ),
+        body: BlocBuilder<ServiceBloc, ServiceState>(
+          builder: (context, state) {
+            if (state is ServiceLoading) {
+              return _buildLoadingState();
+            } else if (state is ServiceLoaded) {
+              if (state.services.isEmpty) {
+                return _buildEmptyState();
+              }
+              return _buildServicesGrid(state.services);
+            } else if (state is ServiceError) {
+              return _buildErrorState(state.message);
+            }
             
-            // Contenu principal
-            Expanded(
-              child: BlocBuilder<ServiceBloc, ServiceState>(
-                builder: (context, state) {
-                  if (state is ServiceLoading) {
-                    return _buildLoadingState();
-                  } else if (state is ServiceError) {
-                    return _buildErrorState(state.message);
-                  } else if (state is ServiceLoaded) {
-                    if (state.services.isEmpty) {
-                      return _buildEmptyState();
-                    }
-                    return _buildServicesList(state.services);
-                  } else if (state is ServiceFeaturedLoaded) {
-                    if (state.services.isEmpty) {
-                      return _buildEmptyState();
-                    }
-                    return _buildServicesList(state.services);
-                  }
-                  
-                  return _buildEmptyState();
-                },
+            return _buildInitialState();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(StarlaneColors.gold600),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Chargement des services VIP...',
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: StarlaneColors.gray600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64.sp,
+              color: StarlaneColors.error,
+            ),
+            SizedBox(height: 24.h),
+            Text(
+              'Erreur de chargement',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
+                color: StarlaneColors.navy900,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: StarlaneColors.gray600,
+              ),
+            ),
+            SizedBox(height: 24.h),
+            ElevatedButton.icon(
+              onPressed: _loadServices,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Réessayer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: StarlaneColors.gold600,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
               ),
             ),
           ],
@@ -202,113 +408,104 @@ class _ServicesScreenViewState extends State<_ServicesScreenView> {
     );
   }
 
-  Widget _buildLoadingState() {
-    return ListView.builder(
-      padding: EdgeInsets.all(20.w),
-      itemCount: 6,
-      itemBuilder: (context, index) => Container(
-        margin: EdgeInsets.only(bottom: 16.h),
-        height: 200.h,
-        decoration: BoxDecoration(
-          color: StarlaneColors.gray100,
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        child: const StarlaneShimmer(),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64.sp,
-            color: StarlaneColors.error,
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            'Erreur',
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w600,
-              color: StarlaneColors.textPrimary,
-            ),
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: StarlaneColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 24.h),
-          StarlaneButton(
-            text: 'Réessayer',
-            onPressed: _onRefresh,
-            style: StarlaneButtonStyle.primary,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(24.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  StarlaneColors.gold600.withOpacity(0.1),
-                  StarlaneColors.gold400.withOpacity(0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(32.r),
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.diamond_outlined,
+              size: 64.sp,
+              color: StarlaneColors.gray400,
             ),
-            child: Icon(
-              Icons.diamond, // ICÔNE VIP
+            SizedBox(height: 24.h),
+            Text(
+              'Aucun service trouvé',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
+                color: StarlaneColors.navy900,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              'Essayez de modifier vos critères de recherche ou de sélectionner une autre catégorie.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: StarlaneColors.gray600,
+              ),
+            ),
+            SizedBox(height: 24.h),
+            TextButton.icon(
+              onPressed: () {
+                _searchController.clear();
+                setState(() {
+                  _selectedCategory = null;
+                  _selectedSortBy = null;
+                });
+                _loadServices();
+              },
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Effacer les filtres'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.diamond_outlined,
               size: 64.sp,
               color: StarlaneColors.gold600,
             ),
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            'Services VIP à venir',
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w600,
-              color: StarlaneColors.textPrimary,
+            SizedBox(height: 24.h),
+            Text(
+              'Découvrez nos services VIP',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
+                color: StarlaneColors.navy900,
+              ),
             ),
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            'Nos services VIP d\'exception arrivent bientôt',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: StarlaneColors.textSecondary,
+            SizedBox(height: 8.h),
+            Text(
+              'Sélectionnez une catégorie pour commencer',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: StarlaneColors.gray600,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildServicesList(List<Service> services) {
+  Widget _buildServicesGrid(List<Service> services) {
     return RefreshIndicator(
-      onRefresh: () async => _onRefresh(),
+      onRefresh: () async => _loadServices(),
       color: StarlaneColors.gold600,
-      child: ListView.builder(
+      child: GridView.builder(
         controller: _scrollController,
-        padding: EdgeInsets.all(20.w),
+        padding: EdgeInsets.all(16.w),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 1,
+          childAspectRatio: 1.8,
+          crossAxisSpacing: 16.w,
+          mainAxisSpacing: 16.h,
+        ),
         itemCount: services.length,
         itemBuilder: (context, index) {
           final service = services[index];
@@ -319,145 +516,258 @@ class _ServicesScreenViewState extends State<_ServicesScreenView> {
   }
 
   Widget _buildServiceCard(Service service) {
-    return StarlaneCard(
-      margin: EdgeInsets.only(bottom: 20.h),
-      onTap: () => _onServiceTap(service),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image du service
-          Container(
-            height: 180.h,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(16.r),
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(16.r),
-              ),
-              child: _buildServiceImage(service),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(
+            color: StarlaneColors.navy900.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
-          
-          SizedBox(height: 16.h),
-          
-          // Badge catégorie + Prix
-          Row(
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16.r),
+          onTap: () => _onServiceTap(service),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              StarlaneBadge(
-                text: _getServiceCategoryName(service.category),
-                backgroundColor: _getServiceCategoryColor(service.category).withOpacity(0.1),
-                textColor: _getServiceCategoryColor(service.category),
-                icon: _getServiceCategoryIcon(service.category),
-              ),
-              
-              const Spacer(),
-              
-              if (service.pricing != null && service.pricing!.basePrice > 0)
-                StarlaneBadge(
-                  text: 'À partir de ${service.pricing!.basePrice.toStringAsFixed(0)} ${_getCurrencySymbol(service.pricing!.currency)}',
-                  backgroundColor: StarlaneColors.gold100,
-                  textColor: StarlaneColors.gold700,
+              // Image du service avec badges
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+                    color: StarlaneColors.gray100,
+                  ),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+                        child: CachedNetworkImage(
+                          imageUrl: service.primaryImageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          placeholder: (context, url) => Container(
+                            color: StarlaneColors.gray100,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(StarlaneColors.gold600),
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: StarlaneColors.gray100,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _getServiceCategoryIcon(service.category),
+                                  size: 32.sp,
+                                  color: _getServiceCategoryColor(service.category),
+                                ),
+                                SizedBox(height: 8.h),
+                                Text(
+                                  'Image non disponible',
+                                  style: TextStyle(
+                                    fontSize: 10.sp,
+                                    color: StarlaneColors.gray500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Badge de catégorie en haut à gauche
+                      Positioned(
+                        top: 8.h,
+                        left: 8.w,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 4.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getServiceCategoryColor(service.category),
+                            borderRadius: BorderRadius.circular(6.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _getServiceCategoryIcon(service.category),
+                                size: 12.sp,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                _getServiceCategoryName(service.category),
+                                style: TextStyle(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Badge featured en haut à droite
+                      if (service.featured)
+                        Positioned(
+                          top: 8.h,
+                          right: 8.w,
+                          child: Container(
+                            width: 28.w,
+                            height: 28.h,
+                            decoration: BoxDecoration(
+                              color: StarlaneColors.gold600,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.star,
+                              size: 16.sp,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
+              ),
+
+              // Contenu du service
+              Expanded(
+                flex: 2,
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Titre
+                      Text(
+                        service.title,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.bold,
+                          color: StarlaneColors.navy900,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 2.h),
+
+                      // Description
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 2.h),
+                          child: Text(
+                            (service.shortDescription?.isNotEmpty == true) 
+                                ? service.shortDescription!
+                                : service.description,
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: StarlaneColors.gray600,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+
+                      // Footer avec prix
+                      Row(
+                        children: [
+                          const Spacer(),
+                          Text(
+                            service.formattedPrice,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.bold,
+                              color: StarlaneColors.gold600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-          
-          SizedBox(height: 12.h),
-          
-          // Titre
-          Text(
-            service.title,
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-              color: StarlaneColors.navy900,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          
-          SizedBox(height: 8.h),
-          
-          // Description
-          if (service.shortDescription != null)
-            Text(
-              service.shortDescription!,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: StarlaneColors.textSecondary,
-                height: 1.4,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          
-          SizedBox(height: 16.h),
-          
-          // Tags/Features
-          if (service.features != null && service.features!.isNotEmpty)
-            Wrap(
-              spacing: 8.w,
-              runSpacing: 6.h,
-              children: service.features!.take(3).map((feature) {
-                return StarlaneBadge(
-                  text: feature,
-                  backgroundColor: StarlaneColors.navy100,
-                  textColor: StarlaneColors.navy700,
-                  fontSize: 10,
-                );
-              }).toList(),
-            ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildServiceImage(Service service) {
-    if (service.images != null && service.images!.isNotEmpty) {
-      final primaryImage = service.images!.firstWhere(
-        (img) => img.isPrimary,
-        orElse: () => service.images!.first,
-      );
-      
-      return CachedNetworkImage(
-        imageUrl: primaryImage.url,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        placeholder: (context, url) => Container(
-          color: StarlaneColors.gray100,
-          child: const StarlaneShimmer(),
-        ),
-        errorWidget: (context, url, error) => _buildDefaultServiceImage(service.category),
-      );
-    } else {
-      return _buildDefaultServiceImage(service.category);
+  // Fonctions helper pour les catégories horizontales
+  IconData _getCategoryIconData(String categoryId) {
+    switch (categoryId) {
+      case 'airTravel':
+        return Icons.flight;
+      case 'transport':
+        return Icons.directions_car; 
+      case 'realEstate':
+        return Icons.home; 
+      case 'corporate':
+        return Icons.business; 
+      default:
+        return Icons.diamond_outlined;
     }
   }
 
-  Widget _buildDefaultServiceImage(String category) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _getServiceCategoryColor(category).withOpacity(0.2),
-            _getServiceCategoryColor(category).withOpacity(0.1),
-          ],
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          _getServiceCategoryIcon(category),
-          size: 48.sp,
-          color: _getServiceCategoryColor(category),
-        ),
-      ),
-    );
+  Color _getCategoryColor(String categoryId) {
+    switch (categoryId) {
+      case 'airTravel':
+        return StarlaneColors.navy500;
+      case 'transport':
+        return StarlaneColors.emerald500;
+      case 'realEstate':
+        return StarlaneColors.gold500;
+      case 'corporate':
+        return StarlaneColors.purple500;
+      default:
+        return StarlaneColors.gold600;
+    }
   }
 
+  // Fonctions helper pour les badges de services
   IconData _getServiceCategoryIcon(String category) {
     switch (category) {
+      case 'airTravel':
+        return Icons.flight;
+      case 'transport':
+        return Icons.directions_car;
+      case 'realEstate':
+        return Icons.home;
+      case 'corporate':
+        return Icons.business;
       case 'concierge':
         return Icons.support_agent_outlined;
       case 'luxury':
@@ -470,15 +780,21 @@ class _ServicesScreenViewState extends State<_ServicesScreenView> {
         return Icons.business_center_outlined;
       case 'security':
         return Icons.security_outlined;
-      case 'airTravel': // AJOUTÉ pour votre backend
-        return Icons.flight_takeoff;
       default:
-        return Icons.diamond_outlined; // ICÔNE VIP par défaut
+        return Icons.diamond_outlined;
     }
   }
 
   Color _getServiceCategoryColor(String category) {
     switch (category) {
+      case 'airTravel':
+        return StarlaneColors.navy500;
+      case 'transport':
+        return StarlaneColors.emerald500;
+      case 'realEstate':
+        return StarlaneColors.gold500;
+      case 'corporate':
+        return StarlaneColors.purple500;
       case 'concierge':
         return StarlaneColors.gold600;
       case 'luxury':
@@ -491,15 +807,21 @@ class _ServicesScreenViewState extends State<_ServicesScreenView> {
         return StarlaneColors.gray700;
       case 'security':
         return StarlaneColors.error;
-      case 'airTravel': // AJOUTÉ pour votre backend
-        return StarlaneColors.navy600;
       default:
-        return StarlaneColors.gold600; // Couleur VIP par défaut
+        return StarlaneColors.gold600;
     }
   }
 
   String _getServiceCategoryName(String category) {
     switch (category) {
+      case 'airTravel':
+        return 'Air Travel';
+      case 'transport':
+        return 'Transport';
+      case 'realEstate':
+        return 'Real Estate';
+      case 'corporate':
+        return 'Corporate';
       case 'concierge':
         return 'Conciergerie VIP';
       case 'luxury':
@@ -512,28 +834,12 @@ class _ServicesScreenViewState extends State<_ServicesScreenView> {
         return 'Business Class';
       case 'security':
         return 'Sécurité Premium';
-      case 'airTravel': // AJOUTÉ pour votre backend
-        return 'Aviation VIP';
       default:
         return 'Service VIP';
     }
   }
 
-  String _getCurrencySymbol(String currency) {
-    switch (currency) {
-      case 'EUR':
-        return '€';
-      case 'USD':
-        return '\$';
-      case 'GBP':
-        return '£';
-      default:
-        return currency;
-    }
-  }
-
   void _onServiceTap(Service service) {
-    // TODO: Navigation vers ServiceDetailScreen
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Détails du service VIP ${service.title} - À implémenter'),
@@ -551,6 +857,7 @@ class _ServicesScreenViewState extends State<_ServicesScreenView> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _serviceBloc.close();
     super.dispose();
   }
 }

@@ -31,11 +31,19 @@ const getServices = async (req, res) => {
       Service.countDocuments(query)
     ]);
 
+    // AJOUT - Transformation pour compatibilité frontend
+    const transformedServices = services.map(service => ({
+      ...service,
+      title: service.name,           // Alias name -> title
+      featured: service.isFeatured,  // Alias isFeatured -> featured  
+      status: service.isActive ? 'active' : 'inactive' // Transformation isActive -> status
+    }));
+
     const totalPages = Math.ceil(totalServices / limitNumber);
 
     res.status(200).json({
       success: true,
-      data: services,
+      data: transformedServices, // Utiliser les données transformées
       pagination: {
         currentPage: pageNumber,
         totalPages,
@@ -57,11 +65,19 @@ const getServices = async (req, res) => {
 // Get featured services
 const getFeaturedServices = async (req, res) => {
   try {
-    const featuredServices = await Service.getFeatured().limit(10);
+    const featuredServices = await Service.getFeatured().limit(10).lean();
+
+    // AJOUT - Transformation pour compatibilité frontend
+    const transformedServices = featuredServices.map(service => ({
+      ...service,
+      title: service.name,           // Alias name -> title
+      featured: service.isFeatured,  // Alias isFeatured -> featured  
+      status: service.isActive ? 'active' : 'inactive' // Transformation isActive -> status
+    }));
 
     res.status(200).json({
       success: true,
-      data: featuredServices,
+      data: transformedServices, // Utiliser les données transformées
       message: 'Featured services retrieved successfully'
     });
 
@@ -74,12 +90,12 @@ const getFeaturedServices = async (req, res) => {
   }
 };
 
-// Get single service by ID
+// Get service by ID
 const getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const service = await Service.findById(id);
+    const service = await Service.findById(id).lean();
 
     if (!service || !service.isActive) {
       return res.status(404).json({
@@ -88,13 +104,29 @@ const getServiceById = async (req, res) => {
       });
     }
 
+    // AJOUT - Transformation pour compatibilité frontend
+    const transformedService = {
+      ...service,
+      title: service.name,           // Alias name -> title
+      featured: service.isFeatured,  // Alias isFeatured -> featured  
+      status: service.isActive ? 'active' : 'inactive' // Transformation isActive -> status
+    };
+
     res.status(200).json({
       success: true,
-      data: service
+      data: transformedService // Utiliser les données transformées
     });
 
   } catch (error) {
     console.error('Get service by ID error:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service ID format'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Server error while fetching service'
@@ -102,26 +134,37 @@ const getServiceById = async (req, res) => {
   }
 };
 
-// Create new service (Admin only)
+// Create new service
 const createService = async (req, res) => {
   try {
     const serviceData = req.body;
 
-    // Create service
-    const service = new Service(serviceData);
-    await service.save();
+    // Add creator info if user is authenticated
+    if (req.user) {
+      serviceData.createdBy = req.user.id;
+    }
+
+    const service = await Service.create(serviceData);
+
+    // AJOUT - Transformation pour compatibilité frontend
+    const transformedService = {
+      ...service.toObject(),
+      title: service.name,           // Alias name -> title
+      featured: service.isFeatured,  // Alias isFeatured -> featured  
+      status: service.isActive ? 'active' : 'inactive' // Transformation isActive -> status
+    };
 
     res.status(201).json({
       success: true,
-      data: service,
+      data: transformedService,
       message: 'Service created successfully'
     });
 
   } catch (error) {
     console.error('Create service error:', error);
-    
+
     if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(e => e.message);
+      const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
         success: false,
         message: 'Validation error',
@@ -136,7 +179,7 @@ const createService = async (req, res) => {
   }
 };
 
-// Update service (Admin only)
+// Update service
 const updateService = async (req, res) => {
   try {
     const { id } = req.params;
@@ -146,7 +189,7 @@ const updateService = async (req, res) => {
       id,
       updateData,
       { new: true, runValidators: true }
-    );
+    ).lean();
 
     if (!service) {
       return res.status(404).json({
@@ -155,21 +198,36 @@ const updateService = async (req, res) => {
       });
     }
 
+    // AJOUT - Transformation pour compatibilité frontend
+    const transformedService = {
+      ...service,
+      title: service.name,           // Alias name -> title
+      featured: service.isFeatured,  // Alias isFeatured -> featured  
+      status: service.isActive ? 'active' : 'inactive' // Transformation isActive -> status
+    };
+
     res.status(200).json({
       success: true,
-      data: service,
+      data: transformedService,
       message: 'Service updated successfully'
     });
 
   } catch (error) {
     console.error('Update service error:', error);
-    
+
     if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(e => e.message);
+      const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
         success: false,
         message: 'Validation error',
         errors
+      });
+    }
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service ID format'
       });
     }
 
@@ -180,12 +238,11 @@ const updateService = async (req, res) => {
   }
 };
 
-// Delete service (Admin only)
+// Delete service (soft delete)
 const deleteService = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Soft delete - set isActive to false
     const service = await Service.findByIdAndUpdate(
       id,
       { isActive: false },
@@ -206,6 +263,14 @@ const deleteService = async (req, res) => {
 
   } catch (error) {
     console.error('Delete service error:', error);
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service ID format'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Server error while deleting service'
