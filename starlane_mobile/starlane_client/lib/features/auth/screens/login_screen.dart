@@ -10,6 +10,7 @@ import '../../../shared/widgets/starlane_widgets.dart';
 
 // Feature imports
 import '../bloc/auth_bloc.dart';
+import '../../../data/models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,7 +32,6 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _logoAnimation;
   
   bool _obscurePassword = true;
-  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -41,12 +41,12 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _setupAnimations() {
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
     _logoController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen>
     ));
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.2),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animationController,
@@ -89,13 +89,13 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
-      // Hide keyboard
       FocusScope.of(context).unfocus();
       
       context.read<AuthBloc>().add(
         AuthLoginRequested(
           email: _emailController.text.trim(),
           password: _passwordController.text,
+          role: UserRole.client,
         ),
       );
     }
@@ -141,77 +141,72 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           child: SafeArea(
             child: SingleChildScrollView(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.top,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(height: 60.h),
-                      
-                      // Logo animé
-                      Expanded(
-                        flex: 2,
-                        child: ScaleTransition(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height - 
+                             MediaQuery.of(context).padding.top,
+                ),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.w),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Spacer flexible pour centrer le contenu
+                        const Flexible(flex: 1, child: SizedBox()),
+                        
+                        // Logo
+                        ScaleTransition(
                           scale: _logoAnimation,
+                          child: Container(
+                            width: 80.w,
+                            height: 80.w,
+                            decoration: const BoxDecoration(
+                              gradient: StarlaneColors.luxuryGradient,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.star,
+                              size: 40.sp,
+                              color: StarlaneColors.white,
+                            ),
+                          ),
+                        ),
+                        
+                        SizedBox(height: 12.h),
+                        
+                        // Titre marque
+                        FadeTransition(
+                          opacity: _fadeAnimation,
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Container(
-                                width: 100.w,
-                                height: 100.w,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      StarlaneColors.gold400,
-                                      StarlaneColors.gold600,
-                                    ],
-                                  ),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: StarlaneColors.gold500.withOpacity(0.3),
-                                      blurRadius: 20,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.star_rounded,
-                                  size: 50.sp,
-                                  color: StarlaneColors.white,
-                                ),
-                              ),
-                              SizedBox(height: 20.h),
                               Text(
                                 'STARLANE',
                                 style: TextStyle(
-                                  fontSize: 32.sp,
+                                  fontSize: 26.sp,
                                   fontWeight: FontWeight.bold,
                                   color: StarlaneColors.white,
-                                  letterSpacing: 3,
+                                  letterSpacing: 2,
                                 ),
                               ),
                               Text(
                                 'GLOBAL',
                                 style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w300,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w500,
                                   color: StarlaneColors.gold300,
-                                  letterSpacing: 2,
+                                  letterSpacing: 3,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                      
-                      // Formulaire de connexion
-                      Expanded(
-                        flex: 3,
-                        child: SlideTransition(
+                        
+                        SizedBox(height: 20.h),
+                        
+                        // Carte de connexion
+                        SlideTransition(
                           position: _slideAnimation,
                           child: FadeTransition(
                             opacity: _fadeAnimation,
@@ -222,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 borderRadius: BorderRadius.circular(20.r),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: StarlaneColors.black.withOpacity(0.1),
+                                    color: Colors.black.withOpacity(0.1),
                                     blurRadius: 20,
                                     offset: const Offset(0, 10),
                                   ),
@@ -231,42 +226,82 @@ class _LoginScreenState extends State<LoginScreen>
                               child: Form(
                                 key: _formKey,
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    // Titre formulaire
                                     Text(
                                       'Bon retour !',
                                       style: TextStyle(
                                         fontSize: 24.sp,
                                         fontWeight: FontWeight.bold,
-                                        color: StarlaneColors.navy700,
+                                        color: StarlaneColors.navy900,
                                       ),
-                                      textAlign: TextAlign.center,
                                     ),
-                                    
+                                    SizedBox(height: 4.h),
                                     Text(
                                       'Connectez-vous à votre compte',
                                       style: TextStyle(
                                         fontSize: 14.sp,
                                         color: StarlaneColors.gray600,
                                       ),
-                                      textAlign: TextAlign.center,
                                     ),
                                     
-                                    SizedBox(height: 32.h),
+                                    SizedBox(height: 24.h),
                                     
-                                    // Champ Email
-                                    StarlaneTextField(
+                                    // Email
+                                    Text(
+                                      'Email',
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: StarlaneColors.navy700,
+                                      ),
+                                    ),
+                                    SizedBox(height: 6.h),
+                                    TextFormField(
                                       controller: _emailController,
-                                      label: 'Email',
-                                      hintText: 'votre@email.com',
-                                      prefixIcon: Icons.email_outlined,
                                       keyboardType: TextInputType.emailAddress,
                                       textInputAction: TextInputAction.next,
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        color: StarlaneColors.navy900,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: 'votre@email.com',
+                                        hintStyle: TextStyle(
+                                          fontSize: 14.sp,
+                                          color: StarlaneColors.gray400,
+                                        ),
+                                        prefixIcon: Icon(
+                                          Icons.email_outlined,
+                                          color: StarlaneColors.gray400,
+                                          size: 20.sp,
+                                        ),
+                                        filled: true,
+                                        fillColor: StarlaneColors.gray50,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 16.w,
+                                          vertical: 12.h,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          borderSide: BorderSide(color: StarlaneColors.gray300),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          borderSide: BorderSide(color: StarlaneColors.gray300),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          borderSide: BorderSide(color: StarlaneColors.gold500, width: 2),
+                                        ),
+                                      ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        if (value?.isEmpty ?? true) {
                                           return 'Email requis';
                                         }
-                                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
                                           return 'Email invalide';
                                         }
                                         return null;
@@ -275,141 +310,139 @@ class _LoginScreenState extends State<LoginScreen>
                                     
                                     SizedBox(height: 16.h),
                                     
-                                    // Champ Mot de passe
-                                    StarlaneTextField(
+                                    // Mot de passe
+                                    Text(
+                                      'Mot de passe',
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: StarlaneColors.navy700,
+                                      ),
+                                    ),
+                                    SizedBox(height: 6.h),
+                                    TextFormField(
                                       controller: _passwordController,
-                                      label: 'Mot de passe',
-                                      hintText: '••••••••',
-                                      prefixIcon: Icons.lock_outline,
                                       obscureText: _obscurePassword,
                                       textInputAction: TextInputAction.done,
-                                      onSubmitted: (_) => _handleLogin(),
-                                      suffixIcon: IconButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            _obscurePassword = !_obscurePassword;
-                                          });
-                                        },
-                                        icon: Icon(
-                                          _obscurePassword 
-                                            ? Icons.visibility_off_outlined 
-                                            : Icons.visibility_outlined,
-                                          color: StarlaneColors.gray500,
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        color: StarlaneColors.navy900,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: '••••••••',
+                                        hintStyle: TextStyle(
+                                          fontSize: 14.sp,
+                                          color: StarlaneColors.gray400,
+                                        ),
+                                        prefixIcon: Icon(
+                                          Icons.lock_outline,
+                                          color: StarlaneColors.gray400,
+                                          size: 20.sp,
+                                        ),
+                                        suffixIcon: IconButton(
+                                          onPressed: () {
+                                            setState(() => _obscurePassword = !_obscurePassword);
+                                          },
+                                          icon: Icon(
+                                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                            color: StarlaneColors.gray400,
+                                            size: 20.sp,
+                                          ),
+                                        ),
+                                        filled: true,
+                                        fillColor: StarlaneColors.gray50,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 16.w,
+                                          vertical: 12.h,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          borderSide: BorderSide(color: StarlaneColors.gray300),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          borderSide: BorderSide(color: StarlaneColors.gray300),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          borderSide: BorderSide(color: StarlaneColors.gold500, width: 2),
                                         ),
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
+                                        if (value?.isEmpty ?? true) {
                                           return 'Mot de passe requis';
-                                        }
-                                        if (value.length < 6) {
-                                          return 'Minimum 6 caractères';
                                         }
                                         return null;
                                       },
+                                      onFieldSubmitted: (_) => _handleLogin(),
                                     ),
                                     
                                     SizedBox(height: 16.h),
-                                    
-                                    // Se souvenir de moi & Mot de passe oublié
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            SizedBox(
-                                              width: 20.w,
-                                              height: 20.w,
-                                              child: Checkbox(
-                                                value: _rememberMe,
-                                                onChanged: (value) {
-                                                  setState(() {
-                                                    _rememberMe = value ?? false;
-                                                  });
-                                                },
-                                                activeColor: StarlaneColors.gold500,
-                                              ),
-                                            ),
-                                            SizedBox(width: 8.w),
-                                            Text(
-                                              'Se souvenir',
-                                              style: TextStyle(
-                                                fontSize: 12.sp,
-                                                color: StarlaneColors.gray600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            _showSnackBar('Fonctionnalité à venir', isError: true);
-                                          },
-                                          child: Text(
-                                            'Mot de passe oublié ?',
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              color: StarlaneColors.gold600,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    
-                                    SizedBox(height: 24.h),
                                     
                                     // Bouton de connexion
                                     BlocBuilder<AuthBloc, AuthState>(
                                       builder: (context, state) {
-                                        final isLoading = state is AuthLoading;
-                                        
-                                        return StarlaneButton(
-                                          text: 'Se connecter',
-                                          onPressed: isLoading ? null : _handleLogin,
-                                          isLoading: isLoading,
-                                          style: StarlaneButtonStyle.primary,
+                                        return SizedBox(
+                                          width: double.infinity,
+                                          height: 44.h,
+                                          child: ElevatedButton(
+                                            onPressed: state is AuthLoading ? null : _handleLogin,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: StarlaneColors.gold500,
+                                              foregroundColor: StarlaneColors.white,
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12.r),
+                                              ),
+                                            ),
+                                            child: state is AuthLoading
+                                                ? SizedBox(
+                                                    width: 18.w,
+                                                    height: 18.w,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(StarlaneColors.white),
+                                                    ),
+                                                  )
+                                                : Text(
+                                                    'Se connecter',
+                                                    style: TextStyle(
+                                                      fontSize: 15.sp,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                          ),
                                         );
                                       },
                                     ),
                                     
-                                    SizedBox(height: 24.h),
+                                    SizedBox(height: 12.h),
                                     
-                                    // Divider
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Divider(
-                                            color: StarlaneColors.gray300,
-                                            thickness: 1,
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                                          child: Text(
-                                            'ou',
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              color: StarlaneColors.gray500,
+                                    // Bouton créer un compte
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 44.h,
+                                      child: TextButton(
+                                        onPressed: () => context.go(RoutePaths.register),
+                                        style: TextButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12.r),
+                                            side: BorderSide(
+                                              color: StarlaneColors.gold500.withOpacity(0.3),
+                                              width: 1,
                                             ),
                                           ),
                                         ),
-                                        Expanded(
-                                          child: Divider(
-                                            color: StarlaneColors.gray300,
-                                            thickness: 1,
+                                        child: Text(
+                                          'Créer un compte',
+                                          style: TextStyle(
+                                            fontSize: 15.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: StarlaneColors.gold600,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    
-                                    SizedBox(height: 16.h),
-                                    
-                                    // Bouton inscription
-                                    StarlaneButton(
-                                      text: 'Créer un compte',
-                                      onPressed: () {
-                                        context.go(RoutePaths.register);
-                                      },
-                                      style: StarlaneButtonStyle.outline,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -417,21 +450,26 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                         ),
-                      ),
-                      
-                      // Footer
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20.h),
-                        child: Text(
-                          'En vous connectant, vous acceptez nos\nConditions d\'utilisation et notre Politique de confidentialité',
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            color: StarlaneColors.white.withOpacity(0.7),
+                        
+                        SizedBox(height: 12.h),
+                        
+                        // Conditions d'utilisation
+                        FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: Text(
+                            'En vous connectant, vous acceptez nos conditions d\'utilisation',
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: StarlaneColors.white.withOpacity(0.7),
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    ],
+                        
+                        // Spacer flexible
+                        const Flexible(flex: 1, child: SizedBox()),
+                      ],
+                    ),
                   ),
                 ),
               ),

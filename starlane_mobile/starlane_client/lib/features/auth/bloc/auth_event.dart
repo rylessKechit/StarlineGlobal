@@ -9,6 +9,7 @@ abstract class AuthEvent extends Equatable {
 
 class AuthStarted extends AuthEvent {}
 
+// CORRECTION: role optionnel avec valeur par défaut
 class AuthLoginRequested extends AuthEvent {
   final String email;
   final String password;
@@ -17,7 +18,7 @@ class AuthLoginRequested extends AuthEvent {
   const AuthLoginRequested({
     required this.email,
     required this.password,
-    required this.role,
+    this.role = UserRole.client, // AJOUT: Valeur par défaut
   });
 
   @override

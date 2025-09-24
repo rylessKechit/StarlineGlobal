@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/theme/starlane_colors.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 // ============ STARLANE BUTTON ============
 enum StarlaneButtonStyle { primary, secondary, outline, ghost }
@@ -634,5 +635,168 @@ class StarlaneAvatar extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ============ AJOUTEZ CES COMPOSANTS À VOTRE starlane_widgets.dart ============
+
+// ============ STARLANE IMAGE ============
+class StarlaneImage extends StatelessWidget {
+  final String imageUrl;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final BorderRadius? borderRadius;
+
+  const StarlaneImage({
+    super.key,
+    required this.imageUrl,
+    this.width,
+    this.height,
+    this.fit = BoxFit.cover,
+    this.borderRadius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: borderRadius ?? BorderRadius.circular(8.r),
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        placeholder: (context, url) => Container(
+          width: width,
+          height: height,
+          color: StarlaneColors.gray200,
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(StarlaneColors.gold500),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          width: width,
+          height: height,
+          color: StarlaneColors.gray200,
+          child: Icon(
+            Icons.image_not_supported,
+            color: StarlaneColors.gray400,
+            size: 24.sp,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============ STARLANE BADGE ============
+class StarlaneBadge extends StatelessWidget {
+  final String text;
+  final Color backgroundColor;
+  final Color textColor;
+  final IconData? icon;
+  final double? fontSize;
+
+  const StarlaneBadge({
+    super.key,
+    required this.text,
+    required this.backgroundColor,
+    required this.textColor,
+    this.icon,
+    this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: 8.w,
+        vertical: 4.h,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: (fontSize ?? 12.sp) + 2,
+              color: textColor,
+            ),
+            SizedBox(width: 4.w),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: fontSize ?? 12.sp,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============ STARLANE RATING ============
+class StarlaneRating extends StatelessWidget {
+  final double rating;
+  final int maxRating;
+  final double size;
+  final Color? activeColor;
+  final Color? inactiveColor;
+  final bool allowHalfRating;
+
+  const StarlaneRating({
+    super.key,
+    required this.rating,
+    this.maxRating = 5,
+    this.size = 16,
+    this.activeColor,
+    this.inactiveColor,
+    this.allowHalfRating = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(maxRating, (index) {
+        return Icon(
+          _getIconForIndex(index),
+          size: size.sp,
+          color: _getColorForIndex(index),
+        );
+      }),
+    );
+  }
+
+  IconData _getIconForIndex(int index) {
+    double ratingForIcon = rating - index;
+    
+    if (ratingForIcon >= 1.0) {
+      return Icons.star_rounded;
+    } else if (ratingForIcon >= 0.5 && allowHalfRating) {
+      return Icons.star_half_rounded;
+    } else {
+      return Icons.star_outline_rounded;
+    }
+  }
+
+  Color _getColorForIndex(int index) {
+    double ratingForIcon = rating - index;
+    
+    if (ratingForIcon >= 0.5) {
+      return activeColor ?? StarlaneColors.gold500;
+    } else {
+      return inactiveColor ?? StarlaneColors.gray300;
+    }
   }
 }
