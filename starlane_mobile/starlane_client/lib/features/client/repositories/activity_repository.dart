@@ -90,14 +90,26 @@ class ActivityRepositoryImpl implements ActivityRepository {
       final response = await _apiClient.getActivityById(id);
       
       if (response.success && response.data != null) {
-        return response.data!;
+        // ✅ CORRECTION: Le backend renvoie { data: { activity: {...} } }
+        final responseData = response.data as Map<String, dynamic>?;
+        if (responseData != null && responseData['activity'] != null) {
+          final activityData = responseData['activity'] as Map<String, dynamic>;
+          return Activity.fromJson(activityData);
+        }
+        
+        // Fallback si la structure est différente
+        throw ApiException(message: 'Structure de réponse inattendue pour l\'activité');
       } else {
-        throw ApiException(message: response.message);
+        throw ApiException(
+          message: response.message,
+          errors: response.errors,
+        );
       }
     } on DioException catch (e) {
       throw _handleDioException(e);
     } catch (e) {
-      throw ApiException(message: 'Erreur lors de la récupération de l\'activité');
+      print('🔍 ERREUR getActivityById: $e');
+      throw ApiException(message: 'Erreur lors de la récupération des détails de l\'activité');
     }
   }
 

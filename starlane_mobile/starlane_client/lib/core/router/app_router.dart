@@ -1,3 +1,4 @@
+// Path: starlane_mobile/starlane_client/lib/core/router/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,6 +19,7 @@ import '../../features/client/screens/services_screen.dart';
 import '../../features/client/screens/bookings_screen.dart';
 import '../../features/client/screens/profile_screen.dart';
 import '../../features/client/screens/service_details_screen.dart';
+import '../../features/client/screens/activity_details_screen.dart';
 
 // Navigation
 import '../navigation/main_navigation.dart';
@@ -43,11 +45,21 @@ class AppRouter {
         builder: (context, state) => const RegisterScreen(),
       ),
 
+      // Service Details - OUTSIDE shell navigation
       GoRoute(
         path: RoutePaths.serviceDetail,
         builder: (context, state) {
           final serviceId = state.pathParameters['id']!;
           return ServiceDetailsScreen(serviceId: serviceId);
+        },
+      ),
+
+      // Activity Details - OUTSIDE shell navigation
+      GoRoute(
+        path: RoutePaths.activityDetail,
+        builder: (context, state) {
+          final activityId = state.pathParameters['id']!;
+          return ActivityDetailsScreen(activityId: activityId);
         },
       ),
       

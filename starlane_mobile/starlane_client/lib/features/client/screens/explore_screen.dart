@@ -1,8 +1,9 @@
-// lib/features/client/screens/explore_screen.dart
+// Path: starlane_mobile/starlane_client/lib/features/client/screens/explore_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/starlane_colors.dart';
 import '../../../shared/widgets/starlane_widgets.dart';
@@ -41,7 +42,7 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
     super.initState();
     _loadActivities();
     
-    // ✅ Listener pour sticky header
+    // Listener pour sticky header
     _scrollController.addListener(() {
       final isScrolled = _scrollController.offset > 50;
       if (_isScrolled != isScrolled) {
@@ -80,7 +81,7 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
       body: SafeArea(
         child: Column(
           children: [
-            // ✅ HEADER STICKY avec animation
+            // HEADER STICKY avec animation
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
@@ -119,7 +120,7 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
     );
   }
 
-  // ✅ NOUVEAU: Header sticky
+  // Header sticky
   Widget _buildStickyHeader() {
     return Container(
       padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
@@ -137,7 +138,7 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
             ),
           ),
           
-          // ✅ CORRECTION: Description avec AnimatedSize au lieu d'AnimatedContainer
+          // Description avec AnimatedSize
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -161,14 +162,14 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
                 ),
           ),
           
-          SizedBox(height: _isScrolled ? 12.h : 20.h),
+          SizedBox(height: _isScrolled ? 12.h : 16.h),
           
-          // Search bar plus compacte
+          // Barre de recherche
           Container(
-            height: 44.h,
+            height: 48.h,
             decoration: BoxDecoration(
               color: StarlaneColors.gray50,
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(24.r),
               border: Border.all(
                 color: StarlaneColors.gray200,
                 width: 1,
@@ -177,26 +178,26 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: StarlaneColors.textPrimary,
-              ),
               decoration: InputDecoration(
                 hintText: 'Rechercher une activité...',
                 hintStyle: TextStyle(
-                  fontSize: 14.sp,
-                  color: StarlaneColors.textSecondary,
+                  color: StarlaneColors.gray500,
+                  fontSize: 15.sp,
                 ),
                 prefixIcon: Icon(
                   Icons.search,
+                  color: StarlaneColors.gray500,
                   size: 20.sp,
-                  color: StarlaneColors.textSecondary,
                 ),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 16.w,
-                  vertical: 10.h,
+                  vertical: 12.h,
                 ),
+              ),
+              style: TextStyle(
+                fontSize: 15.sp,
+                color: StarlaneColors.textPrimary,
               ),
             ),
           ),
@@ -206,9 +207,9 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
   }
 
   Widget _buildLoadingState() {
-    return Center(
+    return const Center(
       child: CircularProgressIndicator(
-        color: StarlaneColors.primary,
+        valueColor: AlwaysStoppedAnimation<Color>(StarlaneColors.primary),
       ),
     );
   }
@@ -217,9 +218,11 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
     if (activities.isEmpty) {
       return _buildEmptyState();
     }
-
+    
     return RefreshIndicator(
-      onRefresh: () async => _onRefresh(),
+      onRefresh: () async {
+        _onRefresh();
+      },
       color: StarlaneColors.primary,
       child: _buildActivitiesList(activities),
     );
@@ -237,7 +240,7 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
           ),
           SizedBox(height: 16.h),
           Text(
-            'Une erreur est survenue',
+            'Erreur',
             style: TextStyle(
               fontSize: 18.sp,
               fontWeight: FontWeight.w600,
@@ -301,8 +304,8 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
 
   Widget _buildActivitiesList(List<Activity> activities) {
     return ListView.builder(
-      controller: _scrollController, // ✅ Ajout du controller
-      padding: EdgeInsets.all(16.w), // ✅ Padding réduit
+      controller: _scrollController,
+      padding: EdgeInsets.all(16.w),
       itemCount: activities.length,
       itemBuilder: (context, index) {
         final activity = activities[index];
@@ -312,340 +315,207 @@ class _ExploreScreenViewState extends State<_ExploreScreenView> {
   }
 
   Widget _buildActivityCard(Activity activity) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h), // ✅ Margin réduite
-      decoration: BoxDecoration(
-        color: StarlaneColors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: StarlaneColors.gray200, // ✅ Bordure ajoutée
-          width: 1,
-        ),
-        boxShadow: [
-          // ✅ Ombre plus accentuée
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            offset: const Offset(0, 6),
-            blurRadius: 16,
-            spreadRadius: 0,
+    return GestureDetector(
+      onTap: () {
+        // NAVIGATION VERS ACTIVITYDETAILSSCREEN AJOUTÉE
+        context.push('/activity/${activity.id}');
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        decoration: BoxDecoration(
+          color: StarlaneColors.white,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(
+            color: StarlaneColors.gray200,
+            width: 1,
           ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ✅ Image plus petite
-          Container(
-            height: 160.h, // ✅ Réduit de 200h à 160h
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16.r),
-                topRight: Radius.circular(16.r),
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              offset: const Offset(0, 2),
+              blurRadius: 8,
+              spreadRadius: 0,
             ),
-            child: ClipRRect(
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            ClipRRect(
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16.r),
                 topRight: Radius.circular(16.r),
               ),
-              child: Stack(
+              child: _buildActivityImage(activity),
+            ),
+            
+            // Contenu
+            Padding(
+              padding: EdgeInsets.all(16.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image principale
-                  _buildActivityImage(activity),
-                  
-                  // ✅ Badge catégorie avec couleurs matching
-                  Positioned(
-                    top: 12.h,
-                    left: 12.w,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h), // ✅ Plus compact
-                      decoration: BoxDecoration(
-                        color: _getCategoryColor(activity.category).withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(16.r), // ✅ Plus arrondi
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        _getCategoryDisplayName(activity.category),
-                        style: TextStyle(
-                          fontSize: 11.sp, // ✅ Police plus petite
-                          fontWeight: FontWeight.w600,
-                          color: StarlaneColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  // Badge rating si disponible
-                  if (activity.rating > 0)
-                    Positioned(
-                      top: 12.h,
-                      right: 12.w,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h), // ✅ Plus compact
-                        decoration: BoxDecoration(
-                          color: StarlaneColors.gold500,
-                          borderRadius: BorderRadius.circular(10.r),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                  // Titre et provider
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.star,
-                              size: 10.sp, // ✅ Icône plus petite
-                              color: StarlaneColors.white,
-                            ),
-                            SizedBox(width: 2.w),
                             Text(
-                              activity.rating.toStringAsFixed(1),
+                              activity.title,
                               style: TextStyle(
-                                fontSize: 9.sp, // ✅ Texte plus petit
+                                fontSize: 17.sp,
                                 fontWeight: FontWeight.bold,
-                                color: StarlaneColors.white,
+                                color: StarlaneColors.textPrimary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 3.h),
+                            Text(
+                              'Proposé par ${activity.providerName}',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: StarlaneColors.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
                       ),
+                    ],
+                  ),
+                  SizedBox(height: 10.h),
+                  
+                  // Description
+                  Text(
+                    activity.description,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      color: StarlaneColors.textSecondary,
+                      height: 1.4,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 12.h),
+                  
+                  // Info bottom
+                  Row(
+                    children: [
+                      // Location
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 15.sp,
+                        color: StarlaneColors.gray500,
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        '${activity.location.city}, ${activity.location.country}',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: StarlaneColors.gray600,
+                        ),
+                      ),
+                      
+                      Spacer(),
+                      
+                      // Prix
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 4.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: StarlaneColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Text(
+                          'À partir de ${activity.pricing.basePrice.toStringAsFixed(0)}€',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.bold,
+                            color: StarlaneColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-          ),
-          
-          // Contenu blanc plus compact
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(14.w), // ✅ Padding réduit de 16 à 14
-            decoration: BoxDecoration(
-              color: StarlaneColors.white,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(16.r),
-                bottomRight: Radius.circular(16.r),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Titre et provider
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            activity.title,
-                            style: TextStyle(
-                              fontSize: 17.sp, // ✅ Légèrement réduit
-                              fontWeight: FontWeight.bold,
-                              color: StarlaneColors.textPrimary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 3.h), // ✅ Espacement réduit
-                          Text(
-                            'Proposé par ${activity.providerName}',
-                            style: TextStyle(
-                              fontSize: 13.sp, // ✅ Légèrement réduit
-                              color: StarlaneColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10.h), // ✅ Espacement réduit
-                
-                // Description
-                Text(
-                  activity.description,
-                  style: TextStyle(
-                    fontSize: 13.sp, // ✅ Légèrement réduit
-                    color: StarlaneColors.textSecondary,
-                    height: 1.4,
-                  ),
-                  maxLines: 2, // ✅ Réduit à 2 lignes
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 12.h), // ✅ Espacement réduit
-                
-                // Info bottom
-                Row(
-                  children: [
-                    // Location
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 15.sp, // ✅ Icône plus petite
-                      color: StarlaneColors.textSecondary,
-                    ),
-                    SizedBox(width: 4.w),
-                    Expanded(
-                      child: Text(
-                        '${activity.city}, ${activity.country}',
-                        style: TextStyle(
-                          fontSize: 13.sp, // ✅ Texte plus petit
-                          color: StarlaneColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    // Prix
-                    Text(
-                      '${activity.price.toStringAsFixed(0)}${_getCurrencySymbol(activity.currency)}',
-                      style: TextStyle(
-                        fontSize: 17.sp, // ✅ Légèrement réduit
-                        fontWeight: FontWeight.bold,
-                        color: StarlaneColors.gold500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // ✅ NOUVELLE FONCTION: Couleurs matching avec home screen
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'airTravel':
-        return const Color(0xFF3B82F6); // Bleu comme sur home screen
-      case 'transport':
-        return const Color(0xFF10B981); // Vert émeraude
-      case 'realEstate':
-        return const Color(0xFFF59E0B); // Orange/ambre
-      case 'corporate':
-        return const Color(0xFF8B5CF6); // Violet
-      case 'lifestyle':
-        return const Color(0xFFEF4444); // Rouge
-      case 'events':
-        return const Color(0xFF06B6D4); // Cyan
-      case 'security':
-        return const Color(0xFF6B7280); // Gris
-      default:
-        return StarlaneColors.navy500;
-    }
-  }
-
-  // Gestion sécurisée des images
   Widget _buildActivityImage(Activity activity) {
-    final imageUrl = activity.primaryImageUrl;
+    final images = activity.images.where((img) => img.url.isNotEmpty).toList();
     
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return CachedNetworkImage(
-        imageUrl: imageUrl,
+    if (images.isEmpty) {
+      return Container(
+        height: 180.h,
+        color: StarlaneColors.gray100,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.explore_outlined,
+                size: 40.sp,
+                color: StarlaneColors.gray400,
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                activity.title,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                  color: StarlaneColors.gray600,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final primaryImage = images.firstWhere(
+      (img) => img.isPrimary,
+      orElse: () => images.first,
+    );
+
+    return Container(
+      height: 180.h,
+      width: double.infinity,
+      child: CachedNetworkImage(
+        imageUrl: primaryImage.url,
         fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
         placeholder: (context, url) => Container(
           color: StarlaneColors.gray200,
           child: Center(
             child: CircularProgressIndicator(
-              color: StarlaneColors.navy500,
+              valueColor: AlwaysStoppedAnimation<Color>(StarlaneColors.primary),
             ),
           ),
         ),
-        errorWidget: (context, url, error) => _buildDefaultCategoryImage(activity.category),
-      );
-    } else {
-      return _buildDefaultCategoryImage(activity.category);
-    }
-  }
-
-  // Image par défaut basée sur la catégorie
-  Widget _buildDefaultCategoryImage(String category) {
-    return Container(
-      color: _getCategoryColor(category).withOpacity(0.1),
-      child: Center(
-        child: Icon(
-          _getCategoryIcon(category),
-          size: 40.sp, // ✅ Icône plus petite
-          color: _getCategoryColor(category),
+        errorWidget: (context, url, error) => Container(
+          color: StarlaneColors.gray100,
+          child: Center(
+            child: Icon(
+              Icons.broken_image,
+              size: 40.sp,
+              color: StarlaneColors.gray400,
+            ),
+          ),
         ),
       ),
     );
-  }
-
-  // Fonction pour obtenir l'icône de catégorie
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'realEstate':
-        return Icons.home_outlined;
-      case 'airTravel':
-        return Icons.flight_outlined;
-      case 'transport':
-        return Icons.directions_car_outlined;
-      case 'corporate':
-        return Icons.business_outlined;
-      case 'lifestyle':
-        return Icons.spa_outlined;
-      case 'events':
-        return Icons.event_outlined;
-      case 'security':
-        return Icons.security_outlined;
-      default:
-        return Icons.category_outlined;
-    }
-  }
-
-  // Fonction pour le nom d'affichage des catégories
-  String _getCategoryDisplayName(String category) {
-    switch (category) {
-      case 'realEstate':
-        return 'Immobilier';
-      case 'airTravel':
-        return 'Aviation Privée';
-      case 'transport':
-        return 'Transport';
-      case 'corporate':
-        return 'Corporate';
-      case 'lifestyle':
-        return 'Lifestyle';
-      case 'events':
-        return 'Événements';
-      case 'security':
-        return 'Sécurité';
-      default:
-        return 'Autre';
-    }
-  }
-
-  // Fonction pour le symbole de devise
-  String _getCurrencySymbol(String currency) {
-    switch (currency) {
-      case 'EUR':
-        return '€';
-      case 'USD':
-        return '\$';
-      case 'GBP':
-        return '£';
-      default:
-        return currency;
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _scrollController.dispose(); // ✅ Dispose du controller
-    super.dispose();
   }
 }

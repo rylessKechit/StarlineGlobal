@@ -198,16 +198,20 @@ class _ServiceDetailsViewState extends State<_ServiceDetailsView> {
       backgroundColor: StarlaneColors.white,
       leading: Container(
         margin: EdgeInsets.all(8.w),
+        width: 40.w, // Largeur fixe
+        height: 40.w, // Hauteur fixe (carré)
         decoration: BoxDecoration(
           color: StarlaneColors.white.withOpacity(0.9),
           shape: BoxShape.circle,
         ),
-        child: IconButton(
-          onPressed: () => context.pop(),
-          icon: Icon(
-            Icons.arrow_back_ios,
-            color: StarlaneColors.textPrimary,
-            size: 20.sp,
+        child: Center( // Center pour centrer parfaitement
+          child: GestureDetector(
+            onTap: () => context.pop(),
+            child: Icon(
+              Icons.arrow_back_ios_new,
+              color: StarlaneColors.textPrimary,
+              size: 16.sp, // Taille encore plus réduite
+            ),
           ),
         ),
       ),
