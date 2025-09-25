@@ -78,3 +78,12 @@ class ServiceError extends ServiceState {
   @override
   List<Object?> get props => [message, errors];
 }
+
+class ServiceDetailLoaded extends ServiceState {
+  final Service service;
+
+  const ServiceDetailLoaded({required this.service});
+
+  @override
+  List<Object> get props => [service];
+}

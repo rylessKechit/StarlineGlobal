@@ -17,6 +17,7 @@ import '../../features/client/screens/explore_screen.dart';
 import '../../features/client/screens/services_screen.dart';
 import '../../features/client/screens/bookings_screen.dart';
 import '../../features/client/screens/profile_screen.dart';
+import '../../features/client/screens/service_details_screen.dart';
 
 // Navigation
 import '../navigation/main_navigation.dart';
@@ -40,6 +41,14 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+
+      GoRoute(
+        path: RoutePaths.serviceDetail,
+        builder: (context, state) {
+          final serviceId = state.pathParameters['id']!;
+          return ServiceDetailsScreen(serviceId: serviceId);
+        },
       ),
       
       // Main Navigation Shell

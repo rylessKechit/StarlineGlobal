@@ -66,3 +66,12 @@ class ServiceDeleteRequested extends ServiceEvent {
   @override
   List<Object> get props => [serviceId];
 }
+
+class ServiceDetailRequested extends ServiceEvent {
+  final String serviceId;
+
+  const ServiceDetailRequested({required this.serviceId});
+
+  @override
+  List<Object> get props => [serviceId];
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 // Core imports
 import '../../../core/theme/starlane_colors.dart';
@@ -45,13 +46,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     );
   }
 
-  void _onServiceTap(Service service) { // CORRIGÉ - prend maintenant un Service
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Détails du service ${service.title} - À implémenter'),
-        backgroundColor: StarlaneColors.gold600,
-      ),
-    );
+  void _onServiceTap(Service service) {
+    context.push('/service/${service.id}');
   }
 
   @override

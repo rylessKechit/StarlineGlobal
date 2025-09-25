@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 
 // Core imports
 import '../../../core/theme/starlane_colors.dart';
@@ -840,17 +841,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   void _onServiceTap(Service service) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Détails du service VIP ${service.title} - À implémenter'),
-        backgroundColor: StarlaneColors.gold600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.r),
-        ),
-        margin: EdgeInsets.all(16.w),
-      ),
-    );
+    context.push('/service/${service.id}');
   }
 
   @override

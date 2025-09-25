@@ -1,3 +1,4 @@
+// Path: starlane_mobile/starlane_client/lib/features/client/bloc/service_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -78,6 +79,16 @@ class ServiceRefreshRequested extends ServiceEvent {
   List<Object?> get props => [category, search, sortBy];
 }
 
+// ✅ NOUVELLE CLASSE AJOUTÉE
+class ServiceDetailRequested extends ServiceEvent {
+  final String serviceId;
+
+  const ServiceDetailRequested({required this.serviceId});
+
+  @override
+  List<Object> get props => [serviceId];
+}
+
 // States
 abstract class ServiceState extends Equatable {
   const ServiceState();
@@ -121,6 +132,16 @@ class ServiceError extends ServiceState {
   List<Object?> get props => [message];
 }
 
+// ✅ NOUVELLE CLASSE AJOUTÉE
+class ServiceDetailLoaded extends ServiceState {
+  final Service service;
+
+  const ServiceDetailLoaded({required this.service});
+
+  @override
+  List<Object> get props => [service];
+}
+
 // Bloc
 class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
   final ServiceRepository _serviceRepository;
@@ -133,6 +154,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
     on<ServiceSearchRequested>(_onSearchRequested);
     on<ServiceFilterChanged>(_onFilterChanged);
     on<ServiceRefreshRequested>(_onRefreshRequested);
+    on<ServiceDetailRequested>(_onServiceDetailRequested); // ✅ AJOUTÉ
   }
 
   Future<void> _onLoadRequested(
@@ -235,6 +257,22 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
       ));
     } catch (e) {
       emit(ServiceError(message: e.toString()));
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE AJOUTÉE
+  Future<void> _onServiceDetailRequested(
+    ServiceDetailRequested event,
+    Emitter<ServiceState> emit,
+  ) async {
+    emit(ServiceLoading());
+    
+    try {
+      final service = await _serviceRepository.getServiceById(event.serviceId);
+      emit(ServiceDetailLoaded(service: service));
+    } catch (error) {
+      emit(ServiceError(message: 'Erreur lors du chargement des détails du service'));
+      print('🚨 Erreur ServiceDetailRequested: $error');
     }
   }
 }
